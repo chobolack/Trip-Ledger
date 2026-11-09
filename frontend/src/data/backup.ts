@@ -50,6 +50,25 @@ export interface ImportResult {
   updated: number;
   /** 本機已有更新的版本，略過不動。 */
   skipped: number;
+  /**
+   * 略過的紀錄裡，有幾筆是「本機已刪除、備份裡還在」。
+   *
+   * 這是還原備份時最容易撞到的狀況：刪除是寫墓碑並更新時間戳，
+   * 所以墓碑永遠比備份檔新，合併模式會把整份備份擋在門外。
+   * 大於 0 時畫面要提示使用者改用覆蓋模式，否則他只會看到
+   * 「略過 67 筆」然後完全不知道發生什麼事。
+   */
+  blockedByDeletion: number;
+}
+
+export interface ImportOptions {
+  /**
+   * 以備份檔為準，不比時間戳直接覆蓋。
+   *
+   * 用於「還原」——使用者要的是這個檔案的狀態，不是兩邊合併。
+   * 只影響備份檔裡有的紀錄，本機其他資料不動。
+   */
+  force?: boolean;
 }
 
 /** 解析檔案內容，格式不對就丟錯，不讓壞資料進資料庫。 */
@@ -90,14 +109,21 @@ function fail(message: string): never {
 }
 
 /**
- * 把備份合併進本機資料庫。
+ * 把備份寫進本機資料庫。
  *
- * 不是覆蓋——本機既有、且 `updatedAt` 比較新的紀錄會留著。
- * 這樣兩台裝置互相匯入對方的備份也不會互相破壞。
+ * 預設是**合併**：本機既有、且 `updatedAt` 比較新的紀錄會留著，
+ * 這樣兩台裝置互相匯入對方的備份不會互相破壞。
+ *
+ * `force` 則是**還原**：以備份檔為準直接覆蓋。還原一定要有這條路，
+ * 因為刪除是寫墓碑並更新時間戳，合併模式下墓碑永遠贏過備份檔，
+ * 使用者會發現自己刪掉的東西再也救不回來。
  */
-export async function applyBackup(backup: Backup): Promise<ImportResult> {
+export async function applyBackup(
+  backup: Backup,
+  { force = false }: ImportOptions = {},
+): Promise<ImportResult> {
   const db = await getDb();
-  const result: ImportResult = { added: 0, updated: 0, skipped: 0 };
+  const result: ImportResult = { added: 0, updated: 0, skipped: 0, blockedByDeletion: 0 };
 
   const tx = db.transaction(['trips', 'expenses', 'cashEvents'], 'readwrite');
   const sections = [
@@ -113,11 +139,13 @@ export async function applyBackup(backup: Backup): Promise<ImportResult> {
       if (!mine) {
         await store.put(normalize(name, row));
         result.added++;
-      } else if (row.updatedAt > mine.updatedAt) {
+      } else if (force || row.updatedAt > mine.updatedAt) {
         await store.put(normalize(name, row));
         result.updated++;
       } else {
         result.skipped++;
+        // 本機是墓碑、備份裡還活著——這筆是被刪除擋下來的。
+        if (mine.deletedAt !== null && row.deletedAt === null) result.blockedByDeletion++;
       }
     }
   }

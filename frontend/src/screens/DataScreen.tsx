@@ -6,6 +6,7 @@ import {
   buildBackup,
   dataStats,
   parseBackup,
+  type Backup,
   type ImportResult,
 } from '../data/backup';
 import { downloadText } from '../data/download';
@@ -25,6 +26,8 @@ export function DataScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  /** 留著剛解析過的備份，這樣要改用覆蓋模式時不必重選一次檔案。 */
+  const [pending, setPending] = useState<Backup | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
@@ -52,8 +55,10 @@ export function DataScreen() {
     setBusy(true);
     setError(null);
     setResult(null);
+    setPending(null);
     try {
       const backup = parseBackup(await file.text());
+      setPending(backup);
       setResult(await applyBackup(backup));
       await refresh();
     } catch (e) {
@@ -62,6 +67,20 @@ export function DataScreen() {
     setBusy(false);
     // 清掉值，這樣連選同一個檔案兩次也會觸發 change。
     if (fileRef.current) fileRef.current.value = '';
+  }
+
+  /** 以備份檔為準覆蓋。用於還原已經被刪掉的存檔——合併模式擋不住墓碑。 */
+  async function onForce() {
+    if (!pending) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setResult(await applyBackup(pending, { force: true }));
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '還原失敗。');
+    }
+    setBusy(false);
   }
 
   return (
@@ -126,6 +145,23 @@ export function DataScreen() {
               匯入完成：新增 {result.added} 筆、更新 {result.updated} 筆
               {result.skipped > 0 && `、略過 ${result.skipped} 筆（本機版本較新）`}。
             </p>
+          )}
+
+          {/* 合併模式被墓碑擋下來時，使用者只會看到「略過 N 筆」然後一頭霧水。
+              把原因講白，並給一條還原的路。 */}
+          {result && result.blockedByDeletion > 0 && (
+            <div className={s.blocked}>
+              <p className={s.blockedText}>
+                其中 <b>{result.blockedByDeletion} 筆</b>是你在這台裝置上刪掉的。
+                刪除會留下一筆「已刪除」的標記並蓋上當下的時間，
+                比備份檔還新，所以合併模式不會把它們救回來。
+                <br />
+                要還原這份備份原本的內容，改用覆蓋模式。
+              </p>
+              <button type="button" className="btnPri" onClick={onForce} disabled={busy}>
+                以備份檔為準覆蓋
+              </button>
+            </div>
           )}
           {error && <p className="errorText">{error}</p>}
         </div>

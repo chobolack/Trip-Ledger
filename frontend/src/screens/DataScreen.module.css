@@ -71,6 +71,27 @@
   font-size: 13px;
 }
 
+/* 合併被墓碑擋下來時的說明與出路。 */
+.blocked {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--warn);
+  border-radius: var(--r);
+  background: rgb(251 191 36 / 7%);
+}
+
+.blockedText {
+  margin: 0 0 var(--sp-3);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fg-dim);
+}
+
+.blockedText b {
+  color: var(--warn);
+  font-weight: 600;
+}
+
 /* 為什麼需要備份——這不是客套話，是這個 App 的真實限制。 */
 .warn {
   margin-top: var(--sp-5);
