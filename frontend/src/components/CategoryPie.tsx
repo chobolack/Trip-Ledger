@@ -85,9 +85,6 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
             <span className={s.readoutName}>{current.category}</span>
             <span className={s.readoutValue}>{fmtTwd(current.twd)}</span>
             <span className={s.readoutPct}>{pct(current.share)}</span>
-            {selected === current.category && (
-              <span className={s.readoutHint}>明細已篩選．再點一次取消</span>
-            )}
           </>
         ) : (
           <>
