@@ -45,6 +45,30 @@ export async function buildBackup(): Promise<Backup> {
   };
 }
 
+/**
+ * 只匯出一個存檔。格式與完整備份相同，所以一樣匯得回來。
+ *
+ * 用途是把單趟旅程搬到別處或單獨留底，不是整台裝置的備份——
+ * 要保險還是用完整備份。
+ */
+export async function buildTripBackup(tripId: string): Promise<Backup> {
+  const db = await getDb();
+  const [trip, expenses, cashEvents] = await Promise.all([
+    db.get('trips', tripId),
+    db.getAllFromIndex('expenses', 'byTrip', tripId),
+    db.getAllFromIndex('cashEvents', 'byTrip', tripId),
+  ]);
+  if (!trip) throw new Error('找不到這個存檔。');
+  return {
+    format: FORMAT,
+    version: VERSION,
+    exportedAt: new Date().toISOString(),
+    trips: [trip],
+    expenses,
+    cashEvents,
+  };
+}
+
 export interface ImportResult {
   added: number;
   updated: number;
@@ -181,9 +205,15 @@ export async function dataStats(): Promise<{ trips: number; expenses: number }> 
   return { trips: alive(trips), expenses: alive(expenses) };
 }
 
-/** 建議的備份檔名，帶日期方便辨認是哪一次匯出的。 */
-export function backupFilename(): string {
+/**
+ * 建議的備份檔名，帶日期方便辨認是哪一次匯出的。
+ * 傳入存檔名稱就會夾在中間，用來分辨單一存檔的匯出檔。
+ */
+export function backupFilename(label?: string): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
-  return `trip-ledger-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
+  const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+  // 檔名裡的斜線冒號在 Windows 上不合法，換掉。
+  const safe = label?.replace(/[\\/:*?"<>|]/g, '_').trim();
+  return safe ? `trip-ledger-${safe}-${stamp}.json` : `trip-ledger-${stamp}.json`;
 }

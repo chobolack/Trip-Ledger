@@ -9,7 +9,11 @@ import {
   type Backup,
   type ImportResult,
 } from '../data/backup';
+import { buildTripBackup } from '../data/backup';
 import { downloadText } from '../data/download';
+import { getTrip, listExpenses, listTrips } from '../data/repo';
+import { csvFilename, toCsv } from '../domain/csv';
+import type { Trip } from '../domain/types';
 import s from './DataScreen.module.css';
 
 /**
@@ -28,10 +32,17 @@ export function DataScreen() {
   const [result, setResult] = useState<ImportResult | null>(null);
   /** 留著剛解析過的備份，這樣要改用覆蓋模式時不必重選一次檔案。 */
   const [pending, setPending] = useState<Backup | null>(null);
+  /** 單一存檔匯出用的清單與目前選擇。 */
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [picked, setPicked] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
     setStats(await dataStats());
+    const rows = (await listTrips()).sort((a, b) => b.startedOn.localeCompare(a.startedOn));
+    setTrips(rows);
+    // 選擇停留在原本那個；它被刪掉或還沒選過才退回第一個。
+    setPicked((cur) => (rows.some((t) => t.id === cur) ? cur : (rows[0]?.id ?? '')));
   }
 
   useEffect(() => {
@@ -45,6 +56,39 @@ export function DataScreen() {
     try {
       const backup = await buildBackup();
       downloadText(backupFilename(), JSON.stringify(backup), 'application/json');
+    } catch (e) {
+      setError(e instanceof Error ? `匯出失敗：${e.message}` : '匯出失敗。');
+    }
+    setBusy(false);
+  }
+
+  /** 單一存檔匯出成 JSON。格式與完整備份相同，匯得回來。 */
+  async function onExportTripJson() {
+    if (!picked) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const backup = await buildTripBackup(picked);
+      downloadText(
+        backupFilename(backup.trips[0].name),
+        JSON.stringify(backup),
+        'application/json',
+      );
+    } catch (e) {
+      setError(e instanceof Error ? `匯出失敗：${e.message}` : '匯出失敗。');
+    }
+    setBusy(false);
+  }
+
+  /** 單一存檔匯出成 CSV。給試算表看的，**匯不回來**。 */
+  async function onExportTripCsv() {
+    if (!picked) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const trip = await getTrip(picked);
+      if (!trip) throw new Error('找不到這個存檔。');
+      downloadText(csvFilename(trip), toCsv(trip, await listExpenses(trip.id)), 'text/csv');
     } catch (e) {
       setError(e instanceof Error ? `匯出失敗：${e.message}` : '匯出失敗。');
     }
@@ -112,6 +156,40 @@ export function DataScreen() {
               下載完整備份
             </button>
           </div>
+
+          <div className={s.sub}>
+            <span className="hudLabel">單一存檔</span>
+          </div>
+          {trips.length === 0 ? (
+            <p className={s.desc}>還沒有任何存檔。</p>
+          ) : (
+            <>
+              <select
+                className="input"
+                value={picked}
+                onChange={(e) => setPicked(e.target.value)}
+                disabled={busy}
+              >
+                {trips.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}（{t.startedOn}）
+                  </option>
+                ))}
+              </select>
+              <div className={`${s.actions} ${s.actionsSpaced}`}>
+                <button type="button" className="btnGhost" onClick={onExportTripJson} disabled={busy}>
+                  JSON
+                </button>
+                <button type="button" className="btnGhost" onClick={onExportTripCsv} disabled={busy}>
+                  CSV
+                </button>
+              </div>
+              <p className={s.fine}>
+                JSON 跟完整備份同格式，<b>匯得回來</b>；CSV 是給試算表看的，
+                會丟掉紀錄編號與時間戳，<b>匯不回來</b>。
+              </p>
+            </>
+          )}
         </div>
 
         <div className={s.panel}>

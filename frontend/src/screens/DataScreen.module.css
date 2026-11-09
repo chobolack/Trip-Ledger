@@ -60,6 +60,37 @@
   gap: var(--sp-3);
 }
 
+.actionsSpaced {
+  margin-top: var(--sp-3);
+}
+
+/* 面板內的小節標題，後面拖一條線區隔上下。 */
+.sub {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-5) 0 var(--sp-3);
+}
+
+.sub::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.fine {
+  margin: var(--sp-3) 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--fg-faint);
+}
+
+.fine b {
+  color: var(--fg-dim);
+  font-weight: 600;
+}
+
 /* 匯入結果。 */
 .ok {
   margin: var(--sp-4) 0 0;
