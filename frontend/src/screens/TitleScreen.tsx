@@ -23,7 +23,12 @@ export function TitleScreen() {
           <span className={`${s.dot} ${online ? '' : s.dotOffline}`} />
           {online ? '連線中' : '離線模式'}
         </span>
-        <span className="hudLabel">LOCAL&nbsp;STORE&nbsp;·&nbsp;V0.1</span>
+        {/* 備份入口放在狀態列，不放主選單——使用者指定主畫面只有兩個按鈕。
+            但它必須在標題畫面構得到：新裝置一筆資料都沒有，
+            「過往存檔」是停用的，匯入的入口不能藏在它後面。 */}
+        <button type="button" className={s.dataBtn} onClick={() => nav('/data')}>
+          <span className="hudLabel">備份 · BACKUP</span>
+        </button>
       </div>
 
       <div className={s.center}>

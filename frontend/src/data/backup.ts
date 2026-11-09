@@ -1,0 +1,161 @@
+/**
+ * 備份與還原。
+ *
+ * 存在的理由：IndexedDB 是綁定「來源」的（scheme + host + port）。
+ * 換網址、換瀏覽器、換手機，資料都不會跟著走，清掉網站資料也就沒了。
+ * 在後端做好之前，匯出檔案是唯一能把資料搬出去、搬到別台裝置的方法。
+ *
+ * 合併規則跟日後的同步層一致：以 id 比對、`updatedAt` 新的勝出。
+ * 所以同一個檔案重複匯入不會長出重複資料，匯入舊檔也不會蓋掉新的修改。
+ */
+import { getDb } from './db';
+import type { CashEvent, Expense, Trip } from '../domain/types';
+
+const FORMAT = 'trip-ledger-backup';
+const VERSION = 1;
+
+export interface Backup {
+  format: typeof FORMAT;
+  version: number;
+  exportedAt: string;
+  trips: Trip[];
+  expenses: Expense[];
+  cashEvents: CashEvent[];
+}
+
+/**
+ * 匯出全部資料，**包含已刪除的墓碑紀錄**。
+ *
+ * 墓碑要留著：少了它，把備份匯回去會讓先前刪掉的紀錄全部復活。
+ */
+export async function buildBackup(): Promise<Backup> {
+  const db = await getDb();
+  const [trips, expenses, cashEvents] = await Promise.all([
+    db.getAll('trips'),
+    db.getAll('expenses'),
+    db.getAll('cashEvents'),
+  ]);
+  return {
+    format: FORMAT,
+    version: VERSION,
+    exportedAt: new Date().toISOString(),
+    trips,
+    expenses,
+    cashEvents,
+  };
+}
+
+export interface ImportResult {
+  added: number;
+  updated: number;
+  /** 本機已有更新的版本，略過不動。 */
+  skipped: number;
+}
+
+/** 解析檔案內容，格式不對就丟錯，不讓壞資料進資料庫。 */
+export function parseBackup(text: string): Backup {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return fail('這不是有效的 JSON 檔。');
+  }
+  if (typeof raw !== 'object' || raw === null) return fail('檔案內容不是物件。');
+
+  const b = raw as Partial<Backup>;
+  if (b.format !== FORMAT) {
+    return fail('這不是 Trip Ledger 的備份檔（缺少格式標記）。');
+  }
+  if (typeof b.version !== 'number' || b.version > VERSION) {
+    return fail(`備份檔版本是 ${String(b.version)}，這個版本的程式只讀得懂 ${VERSION} 以下。`);
+  }
+  for (const key of ['trips', 'expenses', 'cashEvents'] as const) {
+    if (!Array.isArray(b[key])) return fail(`備份檔缺少 ${key} 這一段。`);
+    for (const row of b[key] as unknown[]) {
+      if (
+        typeof row !== 'object' ||
+        row === null ||
+        typeof (row as { id?: unknown }).id !== 'string' ||
+        typeof (row as { updatedAt?: unknown }).updatedAt !== 'string'
+      ) {
+        return fail(`${key} 裡有紀錄缺少 id 或 updatedAt，檔案可能損毀。`);
+      }
+    }
+  }
+  return raw as Backup;
+}
+
+function fail(message: string): never {
+  throw new Error(message);
+}
+
+/**
+ * 把備份合併進本機資料庫。
+ *
+ * 不是覆蓋——本機既有、且 `updatedAt` 比較新的紀錄會留著。
+ * 這樣兩台裝置互相匯入對方的備份也不會互相破壞。
+ */
+export async function applyBackup(backup: Backup): Promise<ImportResult> {
+  const db = await getDb();
+  const result: ImportResult = { added: 0, updated: 0, skipped: 0 };
+
+  const tx = db.transaction(['trips', 'expenses', 'cashEvents'], 'readwrite');
+  const sections = [
+    ['trips', backup.trips],
+    ['expenses', backup.expenses],
+    ['cashEvents', backup.cashEvents],
+  ] as const;
+
+  for (const [name, rows] of sections) {
+    const store = tx.objectStore(name);
+    for (const row of rows) {
+      const mine = await store.get(row.id);
+      if (!mine) {
+        await store.put(normalize(name, row));
+        result.added++;
+      } else if (row.updatedAt > mine.updatedAt) {
+        await store.put(normalize(name, row));
+        result.updated++;
+      } else {
+        result.skipped++;
+      }
+    }
+  }
+  await tx.done;
+  return result;
+}
+
+/**
+ * 補上較舊的備份可能沒有的欄位。
+ *
+ * 寫進去的物件若缺欄位，讀出來會是 undefined 而不是 null，
+ * 後面每個判斷 `=== null` 的地方都會失準。
+ */
+function normalize<T>(store: 'trips' | 'expenses' | 'cashEvents', row: T): T {
+  if (store !== 'trips') return row;
+  const t = row as Trip;
+  return {
+    ...t,
+    sealRate: t.sealRate ?? null,
+    sealRateAt: t.sealRateAt ?? null,
+    sealRateSource: t.sealRateSource ?? null,
+    endedOn: t.endedOn ?? null,
+    ownerId: t.ownerId ?? null,
+  } as T;
+}
+
+/** 這台裝置上還活著的紀錄筆數（不算墓碑），給備份畫面顯示用。 */
+export async function dataStats(): Promise<{ trips: number; expenses: number }> {
+  const db = await getDb();
+  const [trips, expenses] = await Promise.all([db.getAll('trips'), db.getAll('expenses')]);
+  const alive = (rows: { deletedAt: string | null }[]) =>
+    rows.filter((r) => r.deletedAt === null).length;
+  return { trips: alive(trips), expenses: alive(expenses) };
+}
+
+/** 建議的備份檔名，帶日期方便辨認是哪一次匯出的。 */
+export function backupFilename(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `trip-ledger-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
+}

@@ -16,7 +16,9 @@ import {
   unsealTrip,
   updateTrip,
 } from '../data/repo';
+import { downloadText } from '../data/download';
 import { currencyLabel } from '../domain/currencies';
+import { csvFilename, toCsv } from '../domain/csv';
 import { tripTotals } from '../domain/money';
 import type { Category, Expense, Trip } from '../domain/types';
 import s from './TripScreen.module.css';
@@ -207,6 +209,15 @@ export function TripScreen() {
         />
 
         <div className={s.actions}>
+          {/* 匯出的是整份明細，不受上面的分類篩選影響。 */}
+          <button
+            type="button"
+            className="btnGhost"
+            onClick={() => downloadText(csvFilename(trip), toCsv(trip, expenses), 'text/csv')}
+            disabled={expenses.length === 0}
+          >
+            匯出 CSV
+          </button>
           {sealed ? (
             <button type="button" className="btnGhost" onClick={onUnseal}>
               解除封存

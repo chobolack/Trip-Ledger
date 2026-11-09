@@ -1,0 +1,94 @@
+.body {
+  max-width: 560px;
+  margin: 0 auto;
+  padding:
+    var(--sp-5)
+    var(--sp-4)
+    calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+}
+
+.panel {
+  position: relative;
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: linear-gradient(180deg, var(--panel), transparent 60%);
+}
+
+.panel + .panel {
+  margin-top: var(--sp-5);
+}
+
+.panelTitle {
+  position: absolute;
+  top: -7px;
+  left: var(--sp-3);
+  padding: 0 var(--sp-2);
+  background: var(--bg);
+}
+
+/* 讀數：目前這台裝置上有多少資料。 */
+.stats {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+}
+
+.stat {
+  min-width: 0;
+}
+
+.statValue {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--f-mono);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.desc {
+  margin: 0 0 var(--sp-4);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fg-dim);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+/* 匯入結果。 */
+.ok {
+  margin: var(--sp-4) 0 0;
+  padding: 9px 12px;
+  border: 1px solid var(--ok);
+  border-radius: var(--r);
+  background: rgb(74 222 128 / 8%);
+  color: var(--ok);
+  font-size: 13px;
+}
+
+/* 為什麼需要備份——這不是客套話，是這個 App 的真實限制。 */
+.warn {
+  margin-top: var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--warn);
+  border-radius: var(--r);
+  background: rgb(251 191 36 / 5%);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fg-dim);
+}
+
+.warn b {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.hidden {
+  display: none;
+}

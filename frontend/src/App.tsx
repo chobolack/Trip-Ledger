@@ -1,5 +1,6 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AddExpenseScreen } from './screens/AddExpenseScreen';
+import { DataScreen } from './screens/DataScreen';
 import { NewSaveScreen } from './screens/NewSaveScreen';
 import { SaveSlotsScreen } from './screens/SaveSlotsScreen';
 import { TitleScreen } from './screens/TitleScreen';
@@ -20,6 +21,7 @@ export function App() {
         <Route path="/" element={<TitleScreen />} />
         <Route path="/new" element={<NewSaveScreen />} />
         <Route path="/saves" element={<SaveSlotsScreen />} />
+        <Route path="/data" element={<DataScreen />} />
         <Route path="/trip/:id" element={<TripScreen />} />
         <Route path="/trip/:id/add" element={<AddExpenseScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />

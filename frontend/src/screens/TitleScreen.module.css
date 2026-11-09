@@ -19,6 +19,24 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* 備份入口。視覺上壓低不搶戲，但點擊範圍撐到 44px——這是手機用的。 */
+.dataBtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -10px -8px -10px 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  transition: color var(--dur) ease;
+}
+
+.dataBtn:hover span,
+.dataBtn:focus-visible span {
+  color: var(--ac);
+}
+
 .dot {
   display: inline-block;
   width: 5px;
