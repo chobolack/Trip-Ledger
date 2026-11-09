@@ -5,7 +5,7 @@
  * 畫面永遠不等網路。
  */
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { CashEvent, Expense, Trip } from '../domain/types';
+import { modernizePaymentMethod, type CashEvent, type Expense, type Trip } from '../domain/types';
 
 const DB_NAME = 'trip-ledger';
 
@@ -14,8 +14,9 @@ const DB_NAME = 'trip-ledger';
  *
  * 1 → 初版
  * 2 → Trip 加入封存匯率欄位（sealRate / sealRateAt / sealRateSource）
+ * 3 → 付款方式「交通卡」拆成「西瓜卡」與「悠遊卡」
  */
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 interface TripLedgerDB extends DBSchema {
   trips: {
@@ -71,6 +72,18 @@ export function getDb(): Promise<IDBPDatabase<TripLedgerDB>> {
               sealRateAt: trip.sealRateAt ?? null,
               sealRateSource: trip.sealRateSource ?? null,
             });
+          }
+        }
+
+        if (oldVersion < 3) {
+          // 既有的「交通卡」換成西瓜卡或悠遊卡，否則它會變成非法值，
+          // 統計會把那些紀錄默默併進「其他」。
+          const store = tx.objectStore('expenses');
+          for (const e of await store.getAll()) {
+            const next = modernizePaymentMethod(e.paymentMethod, e.amountKind);
+            if (next !== e.paymentMethod) {
+              await store.put({ ...e, paymentMethod: next as typeof e.paymentMethod });
+            }
           }
         }
       },

@@ -12,6 +12,8 @@ import { getDb } from './db';
 import {
   CATEGORIES,
   PAYMENT_METHODS,
+  RETIRED_PAYMENT_METHODS,
+  modernizePaymentMethod,
   type CashEvent,
   type Expense,
   type Trip,
@@ -182,7 +184,12 @@ function findProblems(b: Backup): string[] {
     const at = `expenses[${i}]（${e.id}${e.title ? `「${e.title}」` : ''}）`;
     if (!(CATEGORIES as readonly string[]).includes(e.category))
       out.push(`${at} 分類「${e.category}」不是合法值。合法值：${legal(CATEGORIES)}`);
-    if (!(PAYMENT_METHODS as readonly string[]).includes(e.paymentMethod))
+    // 舊的「交通卡」照收，寫入時會自動換成西瓜卡或悠遊卡——
+    // 已經發出去的備份檔不該因為清單改版就匯不進來。
+    if (
+      !(PAYMENT_METHODS as readonly string[]).includes(e.paymentMethod) &&
+      !(RETIRED_PAYMENT_METHODS as readonly string[]).includes(e.paymentMethod)
+    )
       out.push(`${at} 付款方式「${e.paymentMethod}」不是合法值。合法值：${legal(PAYMENT_METHODS)}`);
     if (e.amountKind !== 'twd' && e.amountKind !== 'foreign')
       out.push(`${at} 計價幣別「${e.amountKind}」不是合法值。合法值：twd、foreign`);
@@ -262,16 +269,28 @@ export async function applyBackup(
  * 後面每個判斷 `=== null` 的地方都會失準。
  */
 function normalize<T>(store: 'trips' | 'expenses' | 'cashEvents', row: T): T {
-  if (store !== 'trips') return row;
-  const t = row as Trip;
-  return {
-    ...t,
-    sealRate: t.sealRate ?? null,
-    sealRateAt: t.sealRateAt ?? null,
-    sealRateSource: t.sealRateSource ?? null,
-    endedOn: t.endedOn ?? null,
-    ownerId: t.ownerId ?? null,
-  } as T;
+  if (store === 'trips') {
+    const t = row as Trip;
+    return {
+      ...t,
+      sealRate: t.sealRate ?? null,
+      sealRateAt: t.sealRateAt ?? null,
+      sealRateSource: t.sealRateSource ?? null,
+      endedOn: t.endedOn ?? null,
+      ownerId: t.ownerId ?? null,
+    } as T;
+  }
+  if (store === 'expenses') {
+    const e = row as Expense;
+    // 舊備份裡的「交通卡」在這裡換成西瓜卡或悠遊卡。
+    return {
+      ...e,
+      paymentMethod: modernizePaymentMethod(e.paymentMethod, e.amountKind) as Expense['paymentMethod'],
+      note: e.note ?? '',
+      payerId: e.payerId ?? null,
+    } as T;
+  }
+  return row;
 }
 
 /** 這台裝置上還活著的紀錄筆數（不算墓碑），給備份畫面顯示用。 */

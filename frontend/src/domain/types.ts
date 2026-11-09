@@ -14,8 +14,29 @@ export const CATEGORIES = ['餐飲', '交通', '景點門票', '購物', '住宿
 export type Category = (typeof CATEGORIES)[number];
 
 /** 付款方式。 */
-export const PAYMENT_METHODS = ['現金', '刷卡', '轉帳', '交通卡', '其他'] as const;
+export const PAYMENT_METHODS = ['現金', '刷卡', '轉帳', '西瓜卡', '悠遊卡', '其他'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+/**
+ * 已淘汰但仍可能出現在舊資料裡的付款方式。
+ *
+ * 2026-11-09 之前只有籠統的「交通卡」，之後拆成西瓜卡與悠遊卡。
+ * 匯入舊備份與資料庫升級時都要經過 `modernizePaymentMethod` 換掉，
+ * 否則那些紀錄會變成非法值，統計會把它們併進「其他」。
+ */
+export const RETIRED_PAYMENT_METHODS = ['交通卡'] as const;
+
+/**
+ * 把舊的付款方式換成現行值；不是舊值就原樣回傳。
+ *
+ * 「交通卡」靠計價幣別判斷：外幣的是日本的西瓜卡，台幣的是悠遊卡。
+ * 實際資料驗證過——既有的 7 筆交通卡全部是外幣，`note` 欄也都記著
+ *「原記錄付款方式：西瓜卡」。
+ */
+export function modernizePaymentMethod(value: string, amountKind: AmountKind): string {
+  if (value === '交通卡') return amountKind === 'twd' ? '悠遊卡' : '西瓜卡';
+  return value;
+}
 
 /** 這筆金額是用外幣還是台幣計價。 */
 export type AmountKind = 'foreign' | 'twd';
@@ -25,7 +46,9 @@ export type AmountKind = 'foreign' | 'twd';
  *
  * 刷卡與轉帳的帳單本來就是台幣——銀行在刷的當下就換好匯了，
  * 所以那些金額不需要再換算。只有現金是使用者自己換的外幣。
- * 交通卡（Suica、ICOCA 這類）是用外幣儲值的，算外幣。
+ *
+ * 兩張交通卡的預設剛好相反：西瓜卡（Suica）在日本用外幣儲值，
+ * 悠遊卡是台灣的卡，儲的是台幣。
  *
  * 這只是預設值，使用者可以覆蓋：出國前在台灣買機票、網卡也算這趟旅費，
  * 那些是台幣現金或台幣刷卡。
@@ -34,7 +57,8 @@ export const DEFAULT_AMOUNT_KIND: Record<PaymentMethod, AmountKind> = {
   現金: 'foreign',
   刷卡: 'twd',
   轉帳: 'twd',
-  交通卡: 'foreign',
+  西瓜卡: 'foreign',
+  悠遊卡: 'twd',
   其他: 'foreign',
 };
 
