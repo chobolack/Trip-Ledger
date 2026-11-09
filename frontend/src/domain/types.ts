@@ -13,28 +13,36 @@ export type TripStatus = 'active' | 'archived';
 export const CATEGORIES = ['餐飲', '交通', '景點門票', '購物', '住宿', '其他'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
-/** 付款方式。 */
-export const PAYMENT_METHODS = ['現金', '刷卡', '轉帳', '西瓜卡', '悠遊卡', '其他'] as const;
+/**
+ * 付款方式。
+ *
+ * 刻意沒有「其他」：使用者 2026-11-09 確認原始記帳裡的「其他」其實都是悠遊卡，
+ * 只是當時試算表沒分這一類。日後真的出現放不進這五項的付款方式
+ *（電子支付、禮券、他人代墊）再加回來。
+ */
+export const PAYMENT_METHODS = ['現金', '刷卡', '轉帳', '西瓜卡', '悠遊卡'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /**
- * 已淘汰但仍可能出現在舊資料裡的付款方式。
+ * 已淘汰但仍可能出現在舊資料與舊備份檔裡的付款方式。
  *
- * 2026-11-09 之前只有籠統的「交通卡」，之後拆成西瓜卡與悠遊卡。
- * 匯入舊備份與資料庫升級時都要經過 `modernizePaymentMethod` 換掉，
- * 否則那些紀錄會變成非法值，統計會把它們併進「其他」。
+ * 匯入驗證會放行這些值，寫入時由 `modernizePaymentMethod` 換掉——
+ * 已經發出去的備份檔不該因為清單改版就匯不進來。
  */
-export const RETIRED_PAYMENT_METHODS = ['交通卡'] as const;
+export const RETIRED_PAYMENT_METHODS = ['交通卡', '其他'] as const;
 
 /**
  * 把舊的付款方式換成現行值；不是舊值就原樣回傳。
  *
- * 「交通卡」靠計價幣別判斷：外幣的是日本的西瓜卡，台幣的是悠遊卡。
- * 實際資料驗證過——既有的 7 筆交通卡全部是外幣，`note` 欄也都記著
- *「原記錄付款方式：西瓜卡」。
+ * - **交通卡** 靠計價幣別判斷：外幣是日本的西瓜卡，台幣是悠遊卡。
+ *   實證：既有的 7 筆交通卡全是外幣，`note` 欄都記著「原記錄付款方式：西瓜卡」。
+ * - **其他** 一律換成悠遊卡。這**不是**語意上的等價，是針對既有資料的一次性修正——
+ *   使用者向原記帳者確認過，那些「其他」都是悠遊卡，只是當時沒分這一類。
+ *   實證：既有的 2 筆都是台灣的機場接駁，台幣計價。
  */
 export function modernizePaymentMethod(value: string, amountKind: AmountKind): string {
   if (value === '交通卡') return amountKind === 'twd' ? '悠遊卡' : '西瓜卡';
+  if (value === '其他') return '悠遊卡';
   return value;
 }
 
@@ -59,7 +67,6 @@ export const DEFAULT_AMOUNT_KIND: Record<PaymentMethod, AmountKind> = {
   轉帳: 'twd',
   西瓜卡: 'foreign',
   悠遊卡: 'twd',
-  其他: 'foreign',
 };
 
 /** 現金事件的種類。用來追蹤皮夾裡實際該剩多少錢。 */

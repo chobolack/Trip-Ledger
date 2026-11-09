@@ -105,7 +105,7 @@ function bucketToTwd<K>(
   expenses: Expense[],
   keyOf: (e: Expense) => K,
   order: readonly K[],
-  fallback: K,
+  fallback?: K,
 ): Bucket<K>[] | null {
   const domestic = isDomestic(trip);
   const rate = trip.sealRate;
@@ -115,25 +115,31 @@ function bucketToTwd<K>(
     const isTwd = e.amountKind === 'twd' || domestic;
     if (!isTwd && !(rate !== null && rate > 0)) return null;
     const twd = isTwd ? e.amount : e.amount * rate!;
-    /* 認不得的值歸進「其他」，不是丟掉。
-       匯入驗證會擋下非法值，但萬一還是混進來（舊資料、手工改過的檔），
-       丟掉會讓圓餅少一塊角而且毫無警告——占比加起來不到 100%，
-       金額跟總計區對不上，使用者只能自己猜錢去哪了。 */
+    /* 認不得的值**絕對不能丟掉**。匯入驗證會擋下非法值，但萬一還是混進來
+       （舊資料、手工改過的檔），丟掉會讓圓餅少一塊角而且毫無警告——
+       占比加不到 100%，金額跟總計區對不上，使用者只能自己猜錢去哪了。
+
+       有 fallback 就歸進去（分類用「其他」）；沒有的話保留原值自成一類，
+       這樣至少看得到那筆錢被記成什麼。 */
     const raw = keyOf(e);
-    const k = order.includes(raw) ? raw : fallback;
+    const k = order.includes(raw) ? raw : (fallback ?? raw);
     totals.set(k, (totals.get(k) ?? 0) + twd);
   }
 
   const grand = [...totals.values()].reduce((a, b) => a + b, 0);
   if (grand <= 0) return [];
 
-  return order
-    .filter((k) => (totals.get(k) ?? 0) > 0)
-    .map((key) => {
-      const twd = totals.get(key)!;
-      return { key, twd, share: twd / grand };
-    })
-    .sort((a, b) => b.twd - a.twd || order.indexOf(a.key) - order.indexOf(b.key));
+  /* 排序主鍵是金額由大到小；清單順序只在金額相同時用來打破平手，
+     讓結果穩定、不會每次重算跳動。清單外的值排在平手的最後，
+     但金額大就還是排前面——未知值如果佔很多錢，藏起來反而失真。 */
+  const rank = (k: K) => {
+    const i = order.indexOf(k);
+    return i === -1 ? order.length : i;
+  };
+  return [...totals.entries()]
+    .filter(([, twd]) => twd > 0)
+    .map(([key, twd]) => ({ key, twd, share: twd / grand }))
+    .sort((a, b) => b.twd - a.twd || rank(a.key) - rank(b.key));
 }
 
 export function categoryBreakdown(trip: Trip, expenses: Expense[]): CategorySlice[] | null {
@@ -157,7 +163,9 @@ export interface PaymentSlice {
  * 按付款方式分組才對得起來。
  */
 export function paymentBreakdown(trip: Trip, expenses: Expense[]): PaymentSlice[] | null {
-  const rows = bucketToTwd(trip, expenses, (e) => e.paymentMethod, PAYMENT_METHODS, '其他');
+  // 付款方式沒有「其他」這一項，所以不給 fallback——
+  // 認不得的值會保留原值自成一類，不會被吃掉。
+  const rows = bucketToTwd(trip, expenses, (e) => e.paymentMethod, PAYMENT_METHODS);
   return rows && rows.map(({ key, twd, share }) => ({ method: key, twd, share }));
 }
 
