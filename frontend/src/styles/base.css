@@ -1,0 +1,234 @@
+/** 全域重置與共用元件。元件專屬樣式一律放各自的 *.module.css。 */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.6 var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* 整個 App 的底：細格線 ＋ 中央微光。固定不動，不隨內容捲。 */
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 0%, rgb(34 211 238 / 7%), transparent 70%),
+    linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 40px,
+    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 40px 100%,
+    var(--bg-deep);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* 鍵盤焦點一律看得見，科技風用青色外光而非系統預設框。 */
+:focus-visible {
+  outline: 1px solid var(--ac);
+  outline-offset: 2px;
+}
+
+/* ─── 共用：HUD 標籤 ───────────────────────────────────────────── */
+
+/** 小字拉寬字距的英數標籤，科技風的主要調味料。 */
+.hudLabel {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+/** 等寬數字，避免金額跳動時左右抖。 */
+.num {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── 共用：表單元件 ───────────────────────────────────────────── */
+
+.field {
+  margin-bottom: var(--sp-4);
+}
+
+.fieldLabel {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-bottom: 6px;
+}
+
+.fieldHint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-deep);
+  color: var(--fg);
+  font: inherit;
+  transition:
+    border-color var(--dur) ease,
+    box-shadow var(--dur) ease;
+}
+
+/* 金額、日期、代碼這類用等寬字，數字對得齊。 */
+.input.mono {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.input::placeholder {
+  color: var(--fg-faint);
+}
+
+.input:focus {
+  border-color: var(--ac-deep);
+  box-shadow: 0 0 0 1px var(--ac-wash), 0 0 14px -4px var(--ac-glow);
+  outline: none;
+}
+
+.input:disabled {
+  opacity: 0.5;
+}
+
+/* 日期輸入在深色底下的日曆圖示預設是黑的，反白才看得見。 */
+.input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.75);
+}
+
+/**
+ * 下拉選單。沿用 .input 的框線，拿掉系統外觀換成自畫的箭頭，
+ * 否則 Windows 的原生箭頭在深色底上是一塊灰方塊，跟科技風打架。
+ */
+select.input {
+  padding-right: 34px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2322d3ee' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 6px;
+  cursor: pointer;
+}
+
+.errorText {
+  margin: var(--sp-3) 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--r);
+  background: rgb(248 113 113 / 8%);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/* ─── 共用：選項鈕（分類、付款方式、幣別） ─────────────────────── */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.chip {
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  color: var(--fg-dim);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  transition:
+    border-color var(--dur) ease,
+    background var(--dur) ease,
+    color var(--dur) ease;
+}
+
+.chip:hover:not(.chipOn) {
+  border-color: var(--line-bright);
+  color: var(--fg);
+}
+
+.chipOn {
+  border-color: var(--ac);
+  background: var(--ac-wash);
+  color: var(--ac);
+  font-weight: 600;
+  box-shadow: 0 0 12px -4px var(--ac-glow);
+}
+
+/* ─── 共用：動作按鈕 ───────────────────────────────────────────── */
+
+.btnPri,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: 11px 18px;
+  border: 1px solid var(--ac-deep);
+  border-radius: var(--r);
+  background: linear-gradient(180deg, rgb(34 211 238 / 18%), rgb(34 211 238 / 6%));
+  color: var(--ac);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  transition:
+    border-color var(--dur) ease,
+    box-shadow var(--dur) ease,
+    background var(--dur) ease;
+}
+
+.btnPri:hover:not(:disabled),
+.btnPri:focus-visible {
+  border-color: var(--ac);
+  box-shadow: 0 0 20px -4px var(--ac-glow);
+  outline: none;
+}
+
+.btnGhost {
+  border-color: var(--line);
+  background: var(--panel-raised);
+  color: var(--fg-dim);
+}
+
+.btnGhost:hover:not(:disabled),
+.btnGhost:focus-visible {
+  border-color: var(--line-bright);
+  box-shadow: none;
+  color: var(--fg);
+  outline: none;
+}
+
+.btnPri:disabled,
+.btnGhost:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}

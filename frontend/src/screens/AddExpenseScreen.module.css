@@ -1,0 +1,128 @@
+.body {
+  max-width: 560px;
+  margin: 0 auto;
+  padding:
+    var(--sp-4)
+    var(--sp-4)
+    calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+}
+
+/* 金額是這個畫面的主角，給它一塊獨立的讀數區。 */
+.amountBox {
+  position: relative;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: linear-gradient(180deg, var(--ac-wash), transparent 70%);
+}
+
+.amountRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+.unit {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--ac);
+}
+
+/* 大金額輸入框：無框，靠下方一條線收邊。 */
+.amountInput {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0 0 4px;
+  border: 0;
+  border-bottom: 1px solid var(--line-bright);
+  background: none;
+  color: var(--fg);
+  font-family: var(--f-mono);
+  font-size: 34px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: border-color var(--dur) ease;
+}
+
+.amountInput::placeholder {
+  color: var(--fg-faint);
+  font-weight: 400;
+}
+
+.amountInput:focus {
+  border-bottom-color: var(--ac);
+  outline: none;
+}
+
+/* 幣別切換放在金額區右上，跟著付款方式自動變，但可手動覆蓋。 */
+.kindSwitch {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  display: flex;
+  gap: 4px;
+}
+
+.kindBtn {
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-deep);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-faint);
+  transition:
+    border-color var(--dur) ease,
+    color var(--dur) ease;
+}
+
+.kindBtnOn {
+  border-color: var(--ac);
+  color: var(--ac);
+}
+
+.group {
+  margin-top: var(--sp-5);
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.pair {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+.actions > :first-child {
+  flex: 1;
+}
+
+/* 新增成功的回饋。停在表單上連續記帳，不跳回列表。 */
+.added {
+  margin-top: var(--sp-4);
+  padding: 9px 12px;
+  border: 1px solid var(--ok);
+  border-radius: var(--r);
+  background: rgb(74 222 128 / 8%);
+  color: var(--ok);
+  font-size: 13px;
+}

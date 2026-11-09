@@ -1,0 +1,160 @@
+/**
+ * 分類占比圓餅圖。卡片外框在 StatsPanel，這裡只畫內容。
+ *
+ * 注意外框底色必須維持實色 var(--panel)：切片之間的空隙是用底色描邊
+ * 做出來的（不是畫外框線），漸層底會讓那道空隙對不上背景。
+ */
+
+/* 讀數列。固定高度，滑過切片時換內容但不讓版面跳動。 */
+.readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-3);
+  min-height: 30px;
+  margin-bottom: var(--sp-3);
+}
+
+.readoutName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.readoutValue {
+  font-family: var(--f-mono);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.readoutPct {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--ac);
+}
+
+.readoutHint {
+  font-size: 13px;
+  color: var(--fg-faint);
+}
+
+/* ─── 版面 ─────────────────────────────────────────────────────── */
+
+.wrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+}
+
+.chart {
+  flex: none;
+}
+
+/**
+ * 切片之間的空隙＝用卡片底色描邊，不是畫外框線。
+ *
+ * 描邊必須寫在 CSS 而不是 SVG 的 stroke 屬性上——CSS 變數在
+ * presentation attribute 裡不保證解析，各家瀏覽器行為不一致。
+ */
+.slice {
+  stroke: var(--panel);
+  stroke-width: 2;
+  cursor: pointer;
+  transition: opacity var(--dur) ease;
+}
+
+/* 有切片被聚焦時，其他切片退到背景。不改幾何，避免版面抖動。 */
+.sliceDim {
+  opacity: 0.35;
+}
+
+/**
+ * 被點選（正在篩選明細）的切片。
+ *
+ * 用近白色描邊而不是主題青色：青色跟切片本身的藍色太接近，
+ * 選到藍色那片時會看不出來。描邊只換顏色不改粗細，幾何不動。
+ */
+.sliceSelected {
+  stroke: var(--fg);
+  stroke-width: 2.5;
+}
+
+/* ─── 圖例 ─────────────────────────────────────────────────────── */
+
+/* 圖例同時是這張圖的文字版：每一列都有金額與百分比，
+   所以辨識從不只靠顏色。 */
+.legend {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 190px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  text-align: left;
+  transition: background var(--dur) ease;
+}
+
+.rowOn {
+  background: var(--ac-wash);
+}
+
+/* 正在用來篩選明細的那一列，左邊壓一條槓，滑鼠移開也留著。 */
+.rowSelected {
+  background: var(--ac-wash);
+  box-shadow: inset 2px 0 0 var(--ac);
+}
+
+.rowSelected .name {
+  font-weight: 600;
+  color: var(--ac);
+}
+
+.swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.val {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+}
+
+.pct {
+  flex: none;
+  width: 3.4em;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--fg-faint);
+}
+
+/* ─── 算不出來／沒資料 ─────────────────────────────────────────── */
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg-dim);
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <!-- iOS 加到主畫面時用這張，它不讀 manifest 裡的 icons。 -->
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- viewport-fit=cover 讓底色填滿 iPhone 的瀏海與下巴，畫面各自處理 safe-area。 -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <!-- 手機瀏覽器的網址列顏色，跟 App 底色一致才不會露出一條白邊。 -->
+    <meta name="theme-color" content="#05080d" />
+    <meta name="description" content="旅費記帳" />
+    <title>TRIP LEDGER 旅費記帳</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

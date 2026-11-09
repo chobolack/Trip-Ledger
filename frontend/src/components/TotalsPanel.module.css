@@ -1,0 +1,100 @@
+.panel {
+  position: relative;
+  margin-top: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: linear-gradient(180deg, var(--panel), transparent 70%);
+}
+
+.panelTitle {
+  position: absolute;
+  top: -7px;
+  left: var(--sp-3);
+  padding: 0 var(--sp-2);
+  background: var(--bg);
+}
+
+.block + .block {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: 2px;
+}
+
+.big {
+  font-family: var(--f-mono);
+  font-size: 27px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.twd {
+  color: var(--fg);
+}
+
+.foreign {
+  color: var(--ac);
+}
+
+/* 換算後的台幣，刻意比原幣小一級——它是衍生值，不是記錄值。 */
+.derived {
+  font-family: var(--f-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+}
+
+.note {
+  margin: var(--sp-1) 0 0;
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+
+/* 完整總額：只有拿到封存匯率才出現。 */
+.grand {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--ac-deep);
+  border-radius: var(--r);
+  background: var(--ac-wash);
+}
+
+.grandRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.grandValue {
+  font-family: var(--f-mono);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--ac);
+}
+
+/* 匯率待補：封存時離線抓不到。 */
+.pending {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--warn);
+  border-radius: var(--r);
+  background: rgb(251 191 36 / 7%);
+}
+
+.pendingText {
+  margin: 0 0 var(--sp-3);
+  font-size: 13px;
+  color: var(--warn);
+}
+

@@ -1,0 +1,123 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.day {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+}
+
+.dayHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 9px var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-raised), var(--panel));
+}
+
+.dayTotals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 10px var(--sp-4);
+}
+
+.row + .row {
+  border-top: 1px solid var(--line);
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  display: block;
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tags {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+
+.amount {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.amountForeign {
+  color: var(--ac);
+}
+
+/**
+ * 刪除鈕。兩段式：先變成「確認」才真的刪。
+ *
+ * 這是手機用的 App，所以點擊範圍要撐到 44px——
+ * 視覺上還是一個小小的 ✕，但手指按得到。
+ */
+.del {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -12px -8px -12px 0;
+  padding: 3px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  background: none;
+  font-size: 12px;
+  color: var(--fg-faint);
+  transition:
+    color var(--dur) ease,
+    border-color var(--dur) ease;
+}
+
+.del:hover,
+.del:focus-visible {
+  border-color: var(--danger);
+  color: var(--danger);
+  outline: none;
+}
+
+.delArmed {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-family: var(--f-sans);
+}
+
+.empty {
+  margin-top: var(--sp-3);
+  padding: var(--sp-6) var(--sp-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--r);
+  text-align: center;
+  color: var(--fg-dim);
+}

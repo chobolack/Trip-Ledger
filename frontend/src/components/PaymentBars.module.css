@@ -1,0 +1,61 @@
+/* 依付款方式的橫條。卡片外框在 StatsPanel，這裡只畫內容。 */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: 5px;
+}
+
+.name {
+  font-size: 14px;
+  color: var(--fg);
+}
+
+.value {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--fg-dim);
+}
+
+.pct {
+  color: var(--fg-faint);
+}
+
+/* 軌道是整列寬，填滿的長度才是數值——長度比對齊同一條基準線才讀得準。 */
+.track {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+/**
+ * 所有長條同一個顏色。
+ *
+ * 不依數值深淺上色：付款方式之間沒有大小順序，用色階上色等於把長度
+ * 這個已經表達過的資訊再編碼一次，白白燒掉顏色這個頻道。
+ */
+.fill {
+  height: 100%;
+  /* 資料端收圓角，基準線端切齊，長度才不會被圓角虛胖。 */
+  border-radius: 0 3px 3px 0;
+  background: var(--ac);
+  /* 1% 的項目換算成像素可能不到一格，留個最小寬度才看得見。 */
+  min-width: 3px;
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg-dim);
+}

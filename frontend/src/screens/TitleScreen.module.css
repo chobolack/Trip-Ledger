@@ -1,0 +1,122 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding:
+    calc(var(--sp-4) + env(safe-area-inset-top, 0px))
+    var(--sp-4)
+    calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ─── 頂部 HUD 讀數條 ───────────────────────────────────────────── */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+  vertical-align: 1px;
+}
+
+.dotOffline {
+  background: var(--warn);
+  box-shadow: 0 0 6px var(--warn);
+}
+
+/* ─── 中央標題 ─────────────────────────────────────────────────── */
+
+.center {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-7);
+  padding: var(--sp-6) 0;
+}
+
+.titleBlock {
+  text-align: center;
+}
+
+.zhTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.7em;
+  /* 字距會在最後一個字右邊多留空白，往左推回來讓它真正居中。 */
+  text-indent: 0.7em;
+  color: var(--fg-dim);
+}
+
+.enTitle {
+  margin: var(--sp-3) 0 0;
+  font-family: var(--f-mono);
+  font-size: clamp(30px, 11vw, 46px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.14em;
+  text-indent: 0.14em;
+  color: var(--fg);
+  text-shadow: 0 0 24px var(--ac-glow);
+}
+
+/* 標題下的分隔線，中段亮、兩端淡，兩側各有一個刻度。 */
+.rule {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  justify-content: center;
+  margin-top: var(--sp-4);
+}
+
+.ruleLine {
+  width: min(90px, 22vw);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ac-deep));
+}
+
+.ruleLine:last-child {
+  background: linear-gradient(90deg, var(--ac-deep), transparent);
+}
+
+.ruleTick {
+  width: 5px;
+  height: 5px;
+  rotate: 45deg;
+  border: 1px solid var(--ac);
+  box-shadow: 0 0 8px var(--ac-glow);
+}
+
+/* ─── 選單 ─────────────────────────────────────────────────────── */
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+/* ─── 底部狀態 ─────────────────────────────────────────────────── */
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--line);
+}

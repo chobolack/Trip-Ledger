@@ -1,0 +1,128 @@
+.body {
+  max-width: 560px;
+  margin: 0 auto;
+  padding:
+    var(--sp-4)
+    var(--sp-4)
+    calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+}
+
+/* 存檔抬頭：旅程名稱與關鍵讀數。 */
+.head {
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--ac-deep);
+  border-radius: var(--r);
+  background: linear-gradient(180deg, var(--panel-raised), var(--panel));
+}
+
+.sealedHead {
+  border-left-color: var(--fg-faint);
+}
+
+.name {
+  margin: var(--sp-1) 0 var(--sp-3);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* 讀數格：標籤在上、數值在下，等寬對齊。 */
+.readouts {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+
+.readout {
+  min-width: 0;
+}
+
+.value {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--f-mono);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.valueDim {
+  color: var(--fg-faint);
+}
+
+/* 記帳是進行中存檔的主要動作，給它整行寬度。 */
+.addBtn {
+  width: 100%;
+  margin-top: var(--sp-4);
+  padding: 14px;
+  font-size: 16px;
+}
+
+.listHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+}
+
+/* 篩選中的提示鈕，點了取消篩選。 */
+.filterChip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 9px;
+  border: 1px solid var(--ac-deep);
+  border-radius: var(--r);
+  background: var(--ac-wash);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ac);
+  transition: border-color var(--dur) ease;
+}
+
+.filterChip:hover,
+.filterChip:focus-visible {
+  border-color: var(--ac);
+  outline: none;
+}
+
+.listHead::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* 找不到存檔之類的提示。 */
+.todo {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--r);
+  color: var(--fg-dim);
+}
+
+/* 存檔生命週期動作。 */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.danger:hover:not(:disabled),
+.danger:focus-visible {
+  border-color: var(--danger);
+  color: var(--danger);
+}

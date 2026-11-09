@@ -1,0 +1,48 @@
+/**
+ * 統計圖表的外框，圓餅與長條共用一塊。
+ *
+ * 底色必須是實色 var(--panel)：圓餅切片之間的空隙是用底色描邊做出來的
+ * （見 CategoryPie.module.css 的 .slice），漸層底會讓那道空隙對不上背景。
+ */
+.card {
+  position: relative;
+  margin-top: var(--sp-6);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+}
+
+.cardTitle {
+  position: absolute;
+  top: -7px;
+  left: var(--sp-3);
+  padding: 0 var(--sp-2);
+  background: var(--bg);
+}
+
+/* 小節之間只靠留白分隔。小標籤本身已經拖了一條線，再加分隔線就重複了。 */
+.section + .section {
+  margin-top: var(--sp-6);
+}
+
+/* 小標籤後面拖一條線到底，標出小節範圍。 */
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.sectionLabel::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg-dim);
+}

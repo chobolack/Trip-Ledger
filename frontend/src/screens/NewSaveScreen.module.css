@@ -1,0 +1,42 @@
+.body {
+  max-width: 560px;
+  margin: 0 auto;
+  padding:
+    var(--sp-5)
+    var(--sp-4)
+    calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+}
+
+/* 角括號框的資料面板。 */
+.panel {
+  position: relative;
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: linear-gradient(180deg, var(--panel), transparent 60%);
+}
+
+.panelTitle {
+  position: absolute;
+  top: -7px;
+  left: var(--sp-3);
+  padding: 0 var(--sp-2);
+  background: var(--bg);
+}
+
+/* 兩欄並排，窄螢幕自動疊成一欄。 */
+.pair {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+.actions > :first-child {
+  flex: 1;
+}

@@ -1,0 +1,58 @@
+/**
+ * 設計變數。科技風／HUD：深色底、青色發光、細線框、等寬數字。
+ *
+ * 這是刻意單一主題的設計（科技風本質是暗色），不做淺色切換。
+ * 若之後要在白天戶外使用，再加一組高亮度變數即可，不必動結構。
+ */
+:root {
+  /* 底層 */
+  --bg: #05080d;
+  --bg-deep: #02050a;
+  --panel: #0b1219;
+  --panel-raised: #101a24;
+
+  /* 線 */
+  --line: #1b2b3a;
+  --line-bright: #294055;
+
+  /* 字 */
+  --fg: #d9e6f2;
+  --fg-dim: #8aa1b6;
+  --fg-faint: #566b7f;
+
+  /* 主色：青 */
+  --ac: #22d3ee;
+  --ac-deep: #0891b2;
+  --ac-glow: rgb(34 211 238 / 35%);
+  --ac-wash: rgb(34 211 238 / 8%);
+
+  /* 狀態 */
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --ok: #4ade80;
+
+  /* 字體 */
+  --f-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, Menlo, monospace;
+  --f-sans: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+
+  /* 間距節奏 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* 其他 */
+  --r: 2px; /* 科技風用近乎直角，不用圓角 */
+  --dur: 140ms;
+
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur: 0ms;
+  }
+}
