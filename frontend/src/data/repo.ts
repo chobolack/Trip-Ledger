@@ -1,8 +1,11 @@
 /**
  * 資料存取。畫面只透過這裡碰資料，不直接開 IndexedDB。
  *
- * 刪除一律寫墓碑（`deletedAt`），不真的移除紀錄，否則離線時的刪除無法同步出去。
- * 所有讀取函式都會自動濾掉墓碑。
+ * **刪除就是真的刪除**（使用者 2026-11-09 指定，原本是寫墓碑）。
+ * 墓碑的用途是把「離線時刪掉了什麼」同步給別的裝置，但這個程式沒有後端、
+ * 不打算做自動同步，那個用途永遠不會兌現；而它當下唯一的實際效果是
+ * 讓備份匯入被無聲擋下——墓碑的 `updatedAt` 永遠比備份檔新。
+ * 見 docs/規格.md〈刪除就是真的刪除〉。
  */
 import { getDb } from './db';
 import type {
@@ -31,6 +34,13 @@ export function today(): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
+/**
+ * 濾掉墓碑。
+ *
+ * 改成真的刪除之後，正常情況下資料庫裡不會再有墓碑（schema v5 的遷移清掉了舊的，
+ * 匯入也會忽略備份檔裡的墓碑）。這層濾網留著是為了半途失敗的遷移與手工改過的資料——
+ * 成本是一次 filter，漏掉的代價是已刪除的紀錄重新出現在畫面上。
+ */
 const alive = <T extends { deletedAt: string | null }>(rows: T[]): T[] =>
   rows.filter((r) => r.deletedAt === null);
 
@@ -148,21 +158,23 @@ export async function unsealTrip(id: string): Promise<Trip> {
   return updateTrip(id, { status: 'active', endedOn: null });
 }
 
-/** 刪除存檔，連同底下的花費與現金事件一起寫墓碑。 */
+/**
+ * 刪除存檔，連同底下的花費與現金事件一起**真的從資料庫移除**。
+ *
+ * 沒有復原的路，也不會留下任何痕跡。代價是匯入一份還含有這趟旅程的舊備份時，
+ * 它會被當成新資料加回來——匯入畫面會回報「新增 N 筆」，看到再刪一次。
+ * 這是使用者 2026-11-09 權衡後選的，見 docs/規格.md〈刪除就是真的刪除〉。
+ */
 export async function deleteTrip(id: string): Promise<void> {
   const db = await getDb();
-  const ts = now();
   const tx = db.transaction(['trips', 'expenses', 'cashEvents'], 'readwrite');
 
-  const trip = await tx.objectStore('trips').get(id);
-  if (trip) await tx.objectStore('trips').put({ ...trip, deletedAt: ts, updatedAt: ts });
+  await tx.objectStore('trips').delete(id);
 
   for (const store of ['expenses', 'cashEvents'] as const) {
     const s = tx.objectStore(store);
-    const rows = await s.index('byTrip').getAll(id);
-    for (const row of rows) {
-      if (row.deletedAt === null) await s.put({ ...row, deletedAt: ts, updatedAt: ts });
-    }
+    // 先取主鍵再逐筆刪：邊走 cursor 邊刪同一個索引不保證安全。
+    for (const key of await s.index('byTrip').getAllKeys(id)) await s.delete(key);
   }
   await tx.done;
 }
@@ -202,12 +214,10 @@ export async function addExpense(input: NewExpenseInput): Promise<Expense> {
   return expense;
 }
 
+/** 刪除一筆花費，真的從資料庫移除。沒有復原的路。 */
 export async function deleteExpense(id: string): Promise<void> {
   const db = await getDb();
-  const current = await db.get('expenses', id);
-  if (!current || current.deletedAt !== null) return;
-  const ts = now();
-  await db.put('expenses', { ...current, deletedAt: ts, updatedAt: ts });
+  await db.delete('expenses', id);
 }
 
 export async function listExpenses(tripId: string): Promise<Expense[]> {

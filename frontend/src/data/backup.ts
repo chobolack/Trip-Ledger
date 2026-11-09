@@ -32,9 +32,10 @@ export interface Backup {
 }
 
 /**
- * 匯出全部資料，**包含已刪除的墓碑紀錄**。
+ * 匯出全部資料。
  *
- * 墓碑要留著：少了它，把備份匯回去會讓先前刪掉的紀錄全部復活。
+ * 不必特別濾掉墓碑——刪除改成真的移除之後，資料庫裡不會再有墓碑
+ * （schema v5 的遷移清掉了舊的，`applyBackup` 也不讓新的進來）。
  */
 export async function buildBackup(): Promise<Backup> {
   const db = await getDb();
@@ -80,17 +81,20 @@ export async function buildTripBackup(tripId: string): Promise<Backup> {
 export interface ImportResult {
   added: number;
   updated: number;
-  /** 本機已有更新的版本，略過不動。 */
+  /**
+   * 本機已有更新的版本，略過不動。
+   *
+   * 大於 0 時畫面要提示使用者改用覆蓋模式，否則他只會看到「略過 67 筆」
+   * 卻不知道為什麼東西進不來——這是合併模式下唯一會讓人意外的結果。
+   */
   skipped: number;
   /**
-   * 略過的紀錄裡，有幾筆是「本機已刪除、備份裡還在」。
+   * 備份檔裡是墓碑（`deletedAt` 有值）而被忽略的筆數。
    *
-   * 這是還原備份時最容易撞到的狀況：刪除是寫墓碑並更新時間戳，
-   * 所以墓碑永遠比備份檔新，合併模式會把整份備份擋在門外。
-   * 大於 0 時畫面要提示使用者改用覆蓋模式，否則他只會看到
-   * 「略過 67 筆」然後完全不知道發生什麼事。
+   * 只有舊版程式匯出的檔案才會有。現在刪除是真的移除，資料庫裡不該出現墓碑，
+   * 所以這些紀錄既不寫入、也不拿去刪本機的資料——單純不理它。
    */
-  blockedByDeletion: number;
+  ignoredTombstones: number;
 }
 
 export interface ImportOptions {
@@ -99,6 +103,9 @@ export interface ImportOptions {
    *
    * 用於「還原」——使用者要的是這個檔案的狀態，不是兩邊合併。
    * 只影響備份檔裡有的紀錄，本機其他資料不動。
+   *
+   * 這條路一定要留著：本機改過的紀錄會比備份檔新，合併模式會保留本機版本，
+   * 使用者卻可能正是想拿別台裝置的那份覆蓋掉自己手上這份（例如跟朋友對帳）。
    */
   force?: boolean;
 }
@@ -223,16 +230,17 @@ function fail(message: string): never {
  * 預設是**合併**：本機既有、且 `updatedAt` 比較新的紀錄會留著，
  * 這樣兩台裝置互相匯入對方的備份不會互相破壞。
  *
- * `force` 則是**還原**：以備份檔為準直接覆蓋。還原一定要有這條路，
- * 因為刪除是寫墓碑並更新時間戳，合併模式下墓碑永遠贏過備份檔，
- * 使用者會發現自己刪掉的東西再也救不回來。
+ * `force` 則是**還原**：以備份檔為準直接覆蓋，不比時間戳。
+ *
+ * 備份檔裡的墓碑一律忽略，不寫進資料庫，也不拿去刪本機的紀錄——
+ * 刪除已經改成真的移除，墓碑是舊版程式留下的東西。
  */
 export async function applyBackup(
   backup: Backup,
   { force = false }: ImportOptions = {},
 ): Promise<ImportResult> {
   const db = await getDb();
-  const result: ImportResult = { added: 0, updated: 0, skipped: 0, blockedByDeletion: 0 };
+  const result: ImportResult = { added: 0, updated: 0, skipped: 0, ignoredTombstones: 0 };
 
   const tx = db.transaction(['trips', 'expenses', 'cashEvents'], 'readwrite');
   const sections = [
@@ -244,6 +252,12 @@ export async function applyBackup(
   for (const [name, rows] of sections) {
     const store = tx.objectStore(name);
     for (const row of rows) {
+      /* 舊版備份裡的墓碑。覆蓋模式也不例外——寫進去會讓資料庫重新長出墓碑，
+         那正是這次改動要擺脫的東西。 */
+      if (row.deletedAt !== null && row.deletedAt !== undefined) {
+        result.ignoredTombstones++;
+        continue;
+      }
       const mine = await store.get(row.id);
       if (!mine) {
         await store.put(normalize(name, row));
@@ -253,8 +267,6 @@ export async function applyBackup(
         result.updated++;
       } else {
         result.skipped++;
-        // 本機是墓碑、備份裡還活著——這筆是被刪除擋下來的。
-        if (mine.deletedAt !== null && row.deletedAt === null) result.blockedByDeletion++;
       }
     }
   }
@@ -293,7 +305,7 @@ function normalize<T>(store: 'trips' | 'expenses' | 'cashEvents', row: T): T {
   return row;
 }
 
-/** 這台裝置上還活著的紀錄筆數（不算墓碑），給備份畫面顯示用。 */
+/** 這台裝置上的紀錄筆數，給備份畫面顯示用。墓碑照理不存在，濾一下當保險。 */
 export async function dataStats(): Promise<{ trips: number; expenses: number }> {
   const db = await getDb();
   const [trips, expenses] = await Promise.all([db.getAll('trips'), db.getAll('expenses')]);

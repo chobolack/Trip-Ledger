@@ -113,7 +113,7 @@ export function DataScreen() {
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  /** 以備份檔為準覆蓋。用於還原已經被刪掉的存檔——合併模式擋不住墓碑。 */
+  /** 以備份檔為準覆蓋。用於「我要的是這個檔案的狀態」——合併模式會留著本機較新的版本。 */
   async function onForce() {
     if (!pending) return;
     setBusy(true);
@@ -221,20 +221,23 @@ export function DataScreen() {
           {result && (
             <p className={s.ok}>
               匯入完成：新增 {result.added} 筆、更新 {result.updated} 筆
-              {result.skipped > 0 && `、略過 ${result.skipped} 筆（本機版本較新）`}。
+              {result.skipped > 0 && `、略過 ${result.skipped} 筆`}
+              {result.ignoredTombstones > 0 &&
+                `、忽略 ${result.ignoredTombstones} 筆舊版的已刪除紀錄`}
+              。
             </p>
           )}
 
-          {/* 合併模式被墓碑擋下來時，使用者只會看到「略過 N 筆」然後一頭霧水。
-              把原因講白，並給一條還原的路。 */}
-          {result && result.blockedByDeletion > 0 && (
+          {/* 「略過」是合併模式下唯一會讓人意外的結果：本機版本不比檔案舊就不覆蓋，
+              而使用者可能正是想拿這個檔案蓋掉手上這份（跟別人對帳就是這樣）。
+              把原因講白，並給出那條路——否則他只看到「略過 67 筆」然後一頭霧水。 */}
+          {result && result.skipped > 0 && (
             <div className={s.blocked}>
               <p className={s.blockedText}>
-                其中 <b>{result.blockedByDeletion} 筆</b>是你在這台裝置上刪掉的。
-                刪除會留下一筆「已刪除」的標記並蓋上當下的時間，
-                比備份檔還新，所以合併模式不會把它們救回來。
+                略過的 <b>{result.skipped} 筆</b>，是這台裝置上已經有同樣或更新的版本，
+                合併模式會留著比較新的那份，所以沒有被覆蓋。
                 <br />
-                要還原這份備份原本的內容，改用覆蓋模式。
+                如果你要的是「以這個檔案為準」——例如拿別人的檔案來核對——改用覆蓋模式。
               </p>
               <button type="button" className="btnPri" onClick={onForce} disabled={busy}>
                 以備份檔為準覆蓋

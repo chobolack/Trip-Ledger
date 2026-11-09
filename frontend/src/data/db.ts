@@ -16,8 +16,9 @@ const DB_NAME = 'trip-ledger';
  * 2 → Trip 加入封存匯率欄位（sealRate / sealRateAt / sealRateSource）
  * 3 → 付款方式「交通卡」拆成「西瓜卡」與「悠遊卡」
  * 4 → 付款方式移除「其他」，既有紀錄換成「悠遊卡」
+ * 5 → 刪除改成真的移除，清掉既有的墓碑紀錄
  */
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 interface TripLedgerDB extends DBSchema {
   trips: {
@@ -86,6 +87,26 @@ export function getDb(): Promise<IDBPDatabase<TripLedgerDB>> {
             if (next !== e.paymentMethod) {
               await store.put({ ...e, paymentMethod: next as typeof e.paymentMethod });
             }
+          }
+        }
+
+        /* 刪除從「寫墓碑」改成真的移除（使用者 2026-11-09 指定），
+           所以既有的墓碑要一次清乾淨。不清的話它們會繼續擋住備份匯入——
+           墓碑的 updatedAt 永遠比備份檔新，合併模式會把那些紀錄略過，
+           而使用者只會看到「略過 N 筆」然後不知道為什麼東西進不來。
+           這一步不可逆：墓碑裡還留著被刪紀錄的內容，清掉就真的沒了。 */
+        if (oldVersion < 5) {
+          const trips = tx.objectStore('trips');
+          for (const t of await trips.getAll()) {
+            if (t.deletedAt !== null) await trips.delete(t.id);
+          }
+          const expenses = tx.objectStore('expenses');
+          for (const e of await expenses.getAll()) {
+            if (e.deletedAt !== null) await expenses.delete(e.id);
+          }
+          const cashEvents = tx.objectStore('cashEvents');
+          for (const c of await cashEvents.getAll()) {
+            if (c.deletedAt !== null) await cashEvents.delete(c.id);
           }
         }
       },
