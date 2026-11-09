@@ -148,6 +148,9 @@ select.input {
   background: rgb(248 113 113 / 8%);
   color: var(--danger);
   font-size: 13px;
+  /* 匯入驗證會一次列出多個問題，換行要留著才看得懂哪筆有問題。 */
+  white-space: pre-line;
+  line-height: 1.7;
 }
 
 /* ─── 共用：選項鈕（分類、付款方式、幣別） ─────────────────────── */

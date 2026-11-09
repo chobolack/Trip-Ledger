@@ -9,7 +9,13 @@
  * 所以同一個檔案重複匯入不會長出重複資料，匯入舊檔也不會蓋掉新的修改。
  */
 import { getDb } from './db';
-import type { CashEvent, Expense, Trip } from '../domain/types';
+import {
+  CATEGORIES,
+  PAYMENT_METHODS,
+  type CashEvent,
+  type Expense,
+  type Trip,
+} from '../domain/types';
 
 const FORMAT = 'trip-ledger-backup';
 const VERSION = 1;
@@ -125,7 +131,79 @@ export function parseBackup(text: string): Backup {
       }
     }
   }
+
+  const problems = findProblems(raw as Backup);
+  if (problems.length > 0) {
+    const shown = problems.slice(0, MAX_PROBLEMS);
+    const more = problems.length - shown.length;
+    return fail(
+      `備份檔有 ${problems.length} 個問題，修正後再匯入：\n` +
+        shown.map((p) => `• ${p}`).join('\n') +
+        (more > 0 ? `\n…另外還有 ${more} 個同類問題` : ''),
+    );
+  }
   return raw as Backup;
+}
+
+const MAX_PROBLEMS = 8;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const CURRENCY_CODE = /^[A-Z]{3}$/;
+
+/**
+ * 檢查欄位的值合不合法。
+ *
+ * 非做不可的理由：備份檔是手工或由別的工具產生的（這個格式正在靠範例檔
+ * 口耳相傳），而**寫錯值不會讓程式當掉，只會讓統計默默少算**——
+ * 分類寫成「飲食」而不是「餐飲」，那筆錢就從圓餅圖裡消失，不留痕跡。
+ * 寧可在門口擋下來並講清楚哪裡錯，也不要讓人看著一個缺角的圓餅猜。
+ *
+ * 一次回報所有問題而不是遇到第一個就停，這樣修一輪就好。
+ */
+function findProblems(b: Backup): string[] {
+  const out: string[] = [];
+  const legal = (list: readonly string[]) => list.join('、');
+
+  b.trips.forEach((t, i) => {
+    const at = `trips[${i}]（${t.name ?? t.id}）`;
+    if (typeof t.name !== 'string' || !t.name.trim()) out.push(`${at} 缺少名稱`);
+    if (!CURRENCY_CODE.test(String(t.currency)))
+      out.push(`${at} 幣別「${t.currency}」格式不對，要三個大寫英文字母，例如 JPY`);
+    if (t.status !== 'active' && t.status !== 'archived')
+      out.push(`${at} 狀態「${t.status}」不是合法值。合法值：active、archived`);
+    if (!DATE.test(String(t.startedOn)))
+      out.push(`${at} 出發日「${t.startedOn}」格式不對，要 YYYY-MM-DD`);
+    if (t.endedOn !== null && t.endedOn !== undefined && !DATE.test(String(t.endedOn)))
+      out.push(`${at} 結束日「${t.endedOn}」格式不對，要 YYYY-MM-DD 或 null`);
+    if (t.sealRate !== null && t.sealRate !== undefined && !(t.sealRate > 0))
+      out.push(`${at} 封存匯率「${t.sealRate}」要大於 0 或 null`);
+  });
+
+  b.expenses.forEach((e, i) => {
+    const at = `expenses[${i}]（${e.id}${e.title ? `「${e.title}」` : ''}）`;
+    if (!(CATEGORIES as readonly string[]).includes(e.category))
+      out.push(`${at} 分類「${e.category}」不是合法值。合法值：${legal(CATEGORIES)}`);
+    if (!(PAYMENT_METHODS as readonly string[]).includes(e.paymentMethod))
+      out.push(`${at} 付款方式「${e.paymentMethod}」不是合法值。合法值：${legal(PAYMENT_METHODS)}`);
+    if (e.amountKind !== 'twd' && e.amountKind !== 'foreign')
+      out.push(`${at} 計價幣別「${e.amountKind}」不是合法值。合法值：twd、foreign`);
+    if (typeof e.amount !== 'number' || !Number.isFinite(e.amount) || e.amount <= 0)
+      out.push(`${at} 金額「${e.amount}」要是大於 0 的數字`);
+    if (!DATE.test(String(e.spentOn)))
+      out.push(`${at} 日期「${e.spentOn}」格式不對，要 YYYY-MM-DD`);
+    if (typeof e.tripId !== 'string' || !e.tripId)
+      out.push(`${at} 缺少所屬存檔 tripId`);
+  });
+
+  b.cashEvents.forEach((c, i) => {
+    const at = `cashEvents[${i}]（${c.id}）`;
+    if (!DATE.test(String(c.happenedOn)))
+      out.push(`${at} 日期「${c.happenedOn}」格式不對，要 YYYY-MM-DD`);
+  });
+
+  /* 刻意不檢查「花費的 tripId 不在這個檔案裡」：
+     只匯某趟的明細、而那個存檔已經在裝置上，是合法情境。
+     parseBackup 是純函式，看不到裝置上有什麼，在這裡擋會誤殺。 */
+  return out;
 }
 
 function fail(message: string): never {

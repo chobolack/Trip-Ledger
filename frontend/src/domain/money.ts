@@ -105,6 +105,7 @@ function bucketToTwd<K>(
   expenses: Expense[],
   keyOf: (e: Expense) => K,
   order: readonly K[],
+  fallback: K,
 ): Bucket<K>[] | null {
   const domestic = isDomestic(trip);
   const rate = trip.sealRate;
@@ -114,7 +115,12 @@ function bucketToTwd<K>(
     const isTwd = e.amountKind === 'twd' || domestic;
     if (!isTwd && !(rate !== null && rate > 0)) return null;
     const twd = isTwd ? e.amount : e.amount * rate!;
-    const k = keyOf(e);
+    /* 認不得的值歸進「其他」，不是丟掉。
+       匯入驗證會擋下非法值，但萬一還是混進來（舊資料、手工改過的檔），
+       丟掉會讓圓餅少一塊角而且毫無警告——占比加起來不到 100%，
+       金額跟總計區對不上，使用者只能自己猜錢去哪了。 */
+    const raw = keyOf(e);
+    const k = order.includes(raw) ? raw : fallback;
     totals.set(k, (totals.get(k) ?? 0) + twd);
   }
 
@@ -131,7 +137,7 @@ function bucketToTwd<K>(
 }
 
 export function categoryBreakdown(trip: Trip, expenses: Expense[]): CategorySlice[] | null {
-  const rows = bucketToTwd(trip, expenses, (e) => e.category, CATEGORIES);
+  const rows = bucketToTwd(trip, expenses, (e) => e.category, CATEGORIES, '其他');
   return rows && rows.map(({ key, twd, share }) => ({ category: key, twd, share }));
 }
 
@@ -151,7 +157,7 @@ export interface PaymentSlice {
  * 按付款方式分組才對得起來。
  */
 export function paymentBreakdown(trip: Trip, expenses: Expense[]): PaymentSlice[] | null {
-  const rows = bucketToTwd(trip, expenses, (e) => e.paymentMethod, PAYMENT_METHODS);
+  const rows = bucketToTwd(trip, expenses, (e) => e.paymentMethod, PAYMENT_METHODS, '其他');
   return rows && rows.map(({ key, twd, share }) => ({ method: key, twd, share }));
 }
 
