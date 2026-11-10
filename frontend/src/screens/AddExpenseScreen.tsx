@@ -5,10 +5,14 @@ import { addExpense, getTrip, today } from '../data/repo';
 import { currencyName } from '../domain/currencies';
 import { fmt, isDomestic } from '../domain/money';
 import {
+  CARD_REGIONS,
+  CARD_REGION_LABEL,
   CATEGORIES,
   DEFAULT_AMOUNT_KIND,
+  DEFAULT_CARD_REGION,
   PAYMENT_METHODS,
   type AmountKind,
+  type CardRegion,
   type Category,
   type PaymentMethod,
   type Trip,
@@ -34,6 +38,9 @@ export function AddExpenseScreen() {
   const [category, setCategory] = useState<Category>('餐飲');
   const [method, setMethod] = useState<PaymentMethod>('現金');
   const [kind, setKind] = useState<AmountKind>(DEFAULT_AMOUNT_KIND['現金']);
+  /* 刷卡地區。只有刷卡用得到，但狀態一直留著——使用者在刷卡／現金之間
+     來回切時不該被重設，不然選過的海外／國內會莫名其妙跳回預設。 */
+  const [region, setRegion] = useState<CardRegion>(DEFAULT_CARD_REGION);
   const [spentOn, setSpentOn] = useState(today());
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
@@ -108,6 +115,7 @@ export function AddExpenseScreen() {
         title: title.trim(),
         paymentMethod: method,
         amountKind: effectiveKind,
+        cardRegion: region,
         amount: value,
       });
       // 停在表單上以便連續記帳，只清掉金額與項目，分類、付款方式、日期留著。
@@ -129,24 +137,42 @@ export function AddExpenseScreen() {
       <div className={s.body}>
         <div className={s.amountBox}>
           <span className="hudLabel">金額</span>
-          {!domestic && (
-            <div className={s.kindSwitch}>
-              <button
-                type="button"
-                className={`${s.kindBtn} ${kind === 'foreign' ? s.kindBtnOn : ''}`}
-                onClick={() => setKind('foreign')}
-              >
-                {trip.currency}
-              </button>
-              <button
-                type="button"
-                className={`${s.kindBtn} ${kind === 'twd' ? s.kindBtnOn : ''}`}
-                onClick={() => setKind('twd')}
-              >
-                TWD
-              </button>
-            </div>
-          )}
+          <div className={s.switches}>
+            {!domestic && (
+              <div className={s.kindSwitch}>
+                <button
+                  type="button"
+                  className={`${s.kindBtn} ${kind === 'foreign' ? s.kindBtnOn : ''}`}
+                  onClick={() => setKind('foreign')}
+                >
+                  {trip.currency}
+                </button>
+                <button
+                  type="button"
+                  className={`${s.kindBtn} ${kind === 'twd' ? s.kindBtnOn : ''}`}
+                  onClick={() => setKind('twd')}
+                >
+                  TWD
+                </button>
+              </div>
+            )}
+            {/* 只有刷卡看得到：決定這筆要不要算國外交易手續費。
+                其他付款方式沒有這個問題，顯示出來只會讓人以為要選。 */}
+            {method === '刷卡' && (
+              <div className={s.kindSwitch}>
+                {CARD_REGIONS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`${s.kindBtn} ${region === r ? s.kindBtnOn : ''}`}
+                    onClick={() => setRegion(r)}
+                  >
+                    {CARD_REGION_LABEL[r]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className={s.amountRow}>
             <span className={s.unit}>{effectiveKind === 'twd' ? 'NT$' : trip.currency}</span>
             <input

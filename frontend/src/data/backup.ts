@@ -10,7 +10,10 @@
  */
 import { getDb } from './db';
 import {
+  CARD_REGIONS,
   CATEGORIES,
+  DEFAULT_CARD_FEE_PCT,
+  DEFAULT_CARD_REGION,
   PAYMENT_METHODS,
   RETIRED_PAYMENT_METHODS,
   modernizePaymentMethod,
@@ -185,6 +188,8 @@ function findProblems(b: Backup): string[] {
       out.push(`${at} 結束日「${t.endedOn}」格式不對，要 YYYY-MM-DD 或 null`);
     if (t.sealRate !== null && t.sealRate !== undefined && !(t.sealRate > 0))
       out.push(`${at} 封存匯率「${t.sealRate}」要大於 0 或 null`);
+    if (t.cardFeePct !== undefined && !(typeof t.cardFeePct === 'number' && t.cardFeePct >= 0))
+      out.push(`${at} 刷卡手續費率「${t.cardFeePct}」要是 0 或正數（百分比，例如 1.5）`);
   });
 
   b.expenses.forEach((e, i) => {
@@ -200,6 +205,9 @@ function findProblems(b: Backup): string[] {
       out.push(`${at} 付款方式「${e.paymentMethod}」不是合法值。合法值：${legal(PAYMENT_METHODS)}`);
     if (e.amountKind !== 'twd' && e.amountKind !== 'foreign')
       out.push(`${at} 計價幣別「${e.amountKind}」不是合法值。合法值：twd、foreign`);
+    // 舊備份沒有這欄，匯入時由 normalize 補上，所以只檢查有填的。
+    if (e.cardRegion !== undefined && !(CARD_REGIONS as readonly string[]).includes(e.cardRegion))
+      out.push(`${at} 刷卡地區「${e.cardRegion}」不是合法值。合法值：${legal(CARD_REGIONS)}`);
     if (typeof e.amount !== 'number' || !Number.isFinite(e.amount) || e.amount <= 0)
       out.push(`${at} 金額「${e.amount}」要是大於 0 的數字`);
     if (!DATE.test(String(e.spentOn)))
@@ -289,15 +297,28 @@ function normalize<T>(store: 'trips' | 'expenses' | 'cashEvents', row: T): T {
       sealRateAt: t.sealRateAt ?? null,
       sealRateSource: t.sealRateSource ?? null,
       endedOn: t.endedOn ?? null,
+      /* 舊備份沒有這欄，補預設值而不是 0（使用者 2026-11-09 指定）。
+         補 0 的話，匯入一份舊備份就得先解除封存、把費率改掉才算得出手續費——
+         而那些手續費本來就付了。代價是匯入後的總額會比檔案原本的數字高。 */
+      cardFeePct: t.cardFeePct ?? DEFAULT_CARD_FEE_PCT,
       ownerId: t.ownerId ?? null,
     } as T;
   }
   if (store === 'expenses') {
     const e = row as Expense;
-    // 舊備份裡的「交通卡」在這裡換成西瓜卡或悠遊卡。
+    /* 舊備份裡的「交通卡」在這裡換成西瓜卡或悠遊卡，
+       「國內刷卡」「海外刷卡」換回「刷卡」。
+
+       沒有 cardRegion 的一律補預設的海外，不去還原舊值裡的國內／海外之分——
+       跟 db.ts 的 v9 遷移同一條規則，否則同一份資料走匯入跟走遷移會得到
+       不一樣的結果。 */
     return {
       ...e,
-      paymentMethod: modernizePaymentMethod(e.paymentMethod, e.amountKind) as Expense['paymentMethod'],
+      paymentMethod: modernizePaymentMethod(
+        e.paymentMethod,
+        e.amountKind,
+      ) as Expense['paymentMethod'],
+      cardRegion: e.cardRegion ?? DEFAULT_CARD_REGION,
       note: e.note ?? '',
       payerId: e.payerId ?? null,
     } as T;

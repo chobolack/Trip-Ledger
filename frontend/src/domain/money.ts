@@ -27,7 +27,24 @@ export interface TripTotals {
    * 沒有封存匯率（還沒封存，或封存時離線沒抓到）時為 null。
    */
   foreignAsTwd: number | null;
-  /** 完整總額。要有封存匯率才算得出來，否則為 null。 */
+  /**
+   * 海外刷卡手續費合計（台幣）。
+   *
+   * **不含在 `twdConfirmed` 與 `foreignAsTwd` 裡**——使用者 2026-11-09 指定
+   * 商品金額就是商品金額，手續費獨立呈現。所以它是總額的第三個加項，
+   * 明細列加起來等於商品金額，再加這個才是總額。
+   *
+   * 取各筆四捨五入後的加總，不是總額再乘費率，否則畫面上逐筆加會差一兩塊。
+   */
+  cardFeeTwd: number;
+  /**
+   * 有幾筆海外刷卡算不出手續費：用外幣計價、又還沒有匯率。
+   *
+   * 只會出現在從原檔匯進來的舊資料（那時刷卡是記外幣的）。
+   * 大於 0 時手續費合計是低估的，畫面要講出來，不能默默少算。
+   */
+  cardFeeUnknown: number;
+  /** 完整總額，**含手續費**。要有封存匯率才算得出來，否則為 null。 */
   grandTotalTwd: number | null;
   entryCount: number;
 }
@@ -40,14 +57,45 @@ export function isDomestic(trip: Trip): boolean {
   return trip.currency === 'TWD';
 }
 
+/**
+ * 這筆的海外刷卡手續費（台幣，已四捨五入）。
+ *
+ * 不是刷卡、刷在國內、或這趟的費率是 0 → 回傳 0。
+ * 該收費但算不出來（用外幣計價又還沒有匯率）→ 回傳 null，由呼叫端決定怎麼講。
+ *
+ * **只認使用者記下來的地區，不靠日期或幣別猜。** 出發前在台灣刷的機票跟
+ * 在國外刷卡，資料長得一樣，差別只有使用者知道——所以他在記帳當下就選了。
+ * 見 docs/規格.md〈刷卡手續費〉。
+ */
+export function cardFeeTwd(trip: Trip, e: Expense): number | null {
+  if (e.paymentMethod !== '刷卡' || e.cardRegion !== 'overseas' || trip.cardFeePct <= 0) return 0;
+
+  const rate = trip.sealRate;
+  const base =
+    e.amountKind === 'twd' || isDomestic(trip)
+      ? e.amount
+      : rate !== null && rate > 0
+        ? e.amount * rate
+        : null;
+  if (base === null) return null;
+
+  return Math.round((base * trip.cardFeePct) / 100);
+}
+
 export function tripTotals(trip: Trip, expenses: Expense[]): TripTotals {
   let twdConfirmed = 0;
   let foreignSpent = 0;
+  let cardFee = 0;
+  let cardFeeUnknown = 0;
 
   for (const e of expenses) {
     // 整趟台幣的存檔不分幣別，全部算台幣，免得使用者切錯時金額掉進外幣桶。
     if (e.amountKind === 'twd' || isDomestic(trip)) twdConfirmed += e.amount;
     else foreignSpent += e.amount;
+
+    const fee = cardFeeTwd(trip, e);
+    if (fee === null) cardFeeUnknown++;
+    else cardFee += fee;
   }
 
   const rate = trip.sealRate;
@@ -57,7 +105,10 @@ export function tripTotals(trip: Trip, expenses: Expense[]): TripTotals {
     twdConfirmed,
     foreignSpent,
     foreignAsTwd,
-    grandTotalTwd: foreignAsTwd === null ? null : twdConfirmed + foreignAsTwd,
+    cardFeeTwd: cardFee,
+    cardFeeUnknown,
+    // 手續費是第三個加項：商品金額不含它，所以要在這裡補上去。
+    grandTotalTwd: foreignAsTwd === null ? null : twdConfirmed + foreignAsTwd + cardFee,
     entryCount: expenses.length,
   };
 }
@@ -97,6 +148,11 @@ interface Bucket<K> {
  *
  * 分類占比與付款方式占比只差在分組依據，換算與匯率判斷共用這一份，
  * 免得兩邊對「沒有匯率怎麼辦」給出不一樣的答案。
+ *
+ * **不含海外刷卡手續費。** 圖表回答的是「錢花在什麼上」，而手續費不是花在
+ * 任何一樣東西上；它也不該按比例攤回各分類，那會讓每一塊跟明細列對不起來。
+ * 所以圖表畫的是商品金額，手續費在總計區獨立呈現——跟使用者定的
+ * 「商品金額不含手續費」是同一條規則，全程沒有例外。
  *
  * `order` 是金額相同時的次要排序依據，讓結果穩定、不會每次重算跳動。
  */

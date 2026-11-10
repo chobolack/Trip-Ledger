@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { fmt, fmtTwd, groupByDay, isDomestic } from '../domain/money';
-import type { Expense, Trip } from '../domain/types';
+import { cardFeeTwd, fmt, fmtTwd, groupByDay, isDomestic } from '../domain/money';
+import { CARD_REGION_LABEL, type Expense, type Trip } from '../domain/types';
 import s from './ExpenseList.module.css';
 
 interface Props {
@@ -8,7 +8,7 @@ interface Props {
   expenses: Expense[];
   /** 封存的存檔是唯讀的，不給刪。 */
   readOnly: boolean;
-  /** 傳進來的是篩選過的子集合，空的時候要說「這個分類沒有」而不是「都沒有」。 */
+  /** 傳進來的是篩選過的子集合，空的時候要說「這個條件沒有」而不是「都沒有」。 */
   filtered?: boolean;
   onDelete: (id: string) => void;
 }
@@ -26,7 +26,7 @@ export function ExpenseList({ trip, expenses, readOnly, filtered, onDelete }: Pr
     return (
       <p className={s.empty}>
         {filtered
-          ? '這個分類底下沒有紀錄了。'
+          ? '這個篩選條件底下沒有紀錄。'
           : readOnly
             ? '這趟旅程沒有任何紀錄。'
             : '還沒有紀錄。按上面的「記帳」開始。'}
@@ -75,28 +75,44 @@ function Row({
   const [armed, setArmed] = useState(false);
   // 整趟台幣的存檔不分幣別，一律當台幣顯示。
   const asTwd = expense.amountKind === 'twd' || isDomestic(trip);
+  /* 手續費是加在商品金額之外的獨立一行，所以上面那個金額不動。
+     null 代表這筆是海外刷卡、用外幣記、又還沒有匯率，算不出來。 */
+  const fee = cardFeeTwd(trip, expense);
 
   return (
-    <div className={s.row}>
-      <span className={s.rowMain}>
-        <span className={s.title}>{expense.title || expense.category}</span>
-        <span className={s.tags}>
-          {expense.category} · {expense.paymentMethod}
+    <div className={s.entry}>
+      <div className={s.row}>
+        <span className={s.rowMain}>
+          <span className={s.title}>{expense.title || expense.category}</span>
+          {/* 刷卡才標國內／海外：同樣是刷卡，收不收手續費全看這個，
+              不顯示的話使用者只會看到有的有子行有的沒有，猜不出為什麼。 */}
+          <span className={s.tags}>
+            {expense.category} · {expense.paymentMethod}
+            {expense.paymentMethod === '刷卡' && `（${CARD_REGION_LABEL[expense.cardRegion]}）`}
+          </span>
         </span>
-      </span>
-      <span className={`${s.amount} ${asTwd ? '' : s.amountForeign}`}>
-        {asTwd ? fmtTwd(expense.amount) : `${trip.currency} ${fmt(expense.amount)}`}
-      </span>
-      {!readOnly && (
-        <button
-          type="button"
-          className={`${s.del} ${armed ? s.delArmed : ''}`}
-          onClick={() => (armed ? onDelete(expense.id) : setArmed(true))}
-          onBlur={() => setArmed(false)}
-          aria-label={armed ? '確認刪除這筆' : '刪除這筆'}
-        >
-          {armed ? '確認刪除' : '✕'}
-        </button>
+        <span className={`${s.amount} ${asTwd ? '' : s.amountForeign}`}>
+          {asTwd ? fmtTwd(expense.amount) : `${trip.currency} ${fmt(expense.amount)}`}
+        </span>
+        {!readOnly && (
+          <button
+            type="button"
+            className={`${s.del} ${armed ? s.delArmed : ''}`}
+            onClick={() => (armed ? onDelete(expense.id) : setArmed(true))}
+            onBlur={() => setArmed(false)}
+            aria-label={armed ? '確認刪除這筆' : '刪除這筆'}
+          >
+            {armed ? '確認刪除' : '✕'}
+          </button>
+        )}
+      </div>
+      {fee !== 0 && (
+        <div className={`${s.feeRow} ${readOnly ? '' : s.feeRowEditable}`}>
+          <span>刷卡手續費 {trip.cardFeePct}%</span>
+          <span className={s.feeValue}>
+            {fee === null ? '待匯率' : `＋${fmtTwd(fee)}`}
+          </span>
+        </div>
       )}
     </div>
   );

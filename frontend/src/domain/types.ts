@@ -20,11 +20,37 @@ export type Category = (typeof CATEGORIES)[number];
  * 付款方式。
  *
  * 刻意沒有「其他」：使用者 2026-11-09 確認原始記帳裡的「其他」其實都是悠遊卡，
- * 只是當時試算表沒分這一類。日後真的出現放不進這五項的付款方式
+ * 只是當時試算表沒分這一類。日後真的出現放不進這幾項的付款方式
  *（電子支付、禮券、他人代墊）再加回來。
+ *
+ * **刷卡是一項，不拆成國內／海外**（使用者 2026-11-09 指定）。
+ * 國內外是另一個維度，記在 `Expense.cardRegion`，記帳時像幣種那樣獨立切換——
+ * 把它塞進付款方式會讓這份清單變成兩個概念的乘積，而圖表上「刷卡」
+ * 也會莫名其妙被拆成兩條。
  */
 export const PAYMENT_METHODS = ['現金', '刷卡', '轉帳', '西瓜卡', '悠遊卡'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+/**
+ * 刷卡的地區。**只有付款方式是「刷卡」時有意義**，其他方式帶著也會被忽略。
+ *
+ * 為什麼要有這一格：海外刷卡會被收國外交易手續費（多數卡 1.5%），國內刷卡不會，
+ * 而這件事無法從其他欄位推出來——出發前在台灣刷機票、訂房、旅平險，
+ * 跟在國外刷卡，記下來的資料長得一模一樣（都是刷卡＋台幣）。
+ * 只有使用者知道差別，所以讓他在記帳當下就選定，而不是事後靠日期猜。
+ * 見 docs/規格.md〈刷卡手續費〉。
+ */
+export const CARD_REGIONS = ['overseas', 'domestic'] as const;
+export type CardRegion = (typeof CARD_REGIONS)[number];
+
+/** 記帳畫面與明細列顯示用。 */
+export const CARD_REGION_LABEL: Record<CardRegion, string> = {
+  overseas: '海外',
+  domestic: '國內',
+};
+
+/** 預設海外（使用者 2026-11-09 指定）：這是旅費記帳，刷卡多半刷在國外。 */
+export const DEFAULT_CARD_REGION: CardRegion = 'overseas';
 
 /**
  * 已淘汰但仍可能出現在舊資料與舊備份檔裡的付款方式。
@@ -32,7 +58,7 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
  * 匯入驗證會放行這些值，寫入時由 `modernizePaymentMethod` 換掉——
  * 已經發出去的備份檔不該因為清單改版就匯不進來。
  */
-export const RETIRED_PAYMENT_METHODS = ['交通卡', '其他'] as const;
+export const RETIRED_PAYMENT_METHODS = ['交通卡', '其他', '國內刷卡', '海外刷卡'] as const;
 
 /**
  * 把舊的付款方式換成現行值；不是舊值就原樣回傳。
@@ -42,21 +68,32 @@ export const RETIRED_PAYMENT_METHODS = ['交通卡', '其他'] as const;
  * - **其他** 一律換成悠遊卡。這**不是**語意上的等價，是針對既有資料的一次性修正——
  *   使用者向原記帳者確認過，那些「其他」都是悠遊卡，只是當時沒分這一類。
  *   實證：既有的 2 筆都是台灣的機場接駁，台幣計價。
+ * - **國內刷卡／海外刷卡** 都換回「刷卡」。這兩個值只在 2026-11-09 當天短暫存在過
+ *   （那時國內外是做在付款方式裡的），地區改記在 `cardRegion` 之後就淘汰了。
+ *   舊值裡的國內／海外之分**刻意不還原**，一律當海外——使用者指定舊的刷卡
+ *   全部當海外，而且這樣停在哪個 schema 版本的裝置都會得到同一個結果。
+ *   見 `db.ts` 的 v9 遷移。
  */
 export function modernizePaymentMethod(value: string, amountKind: AmountKind): string {
   if (value === '交通卡') return amountKind === 'twd' ? '悠遊卡' : '西瓜卡';
   if (value === '其他') return '悠遊卡';
+  if (value === '國內刷卡' || value === '海外刷卡') return '刷卡';
   return value;
 }
 
 /** 這筆金額是用外幣還是台幣計價。 */
 export type AmountKind = 'foreign' | 'twd';
 
+/** 新存檔的海外刷卡手續費率（%）。多數信用卡的國外交易手續費就是 1.5%。 */
+export const DEFAULT_CARD_FEE_PCT = 1.5;
+
 /**
  * 每種付款方式的預設計價幣別。
  *
  * 刷卡與轉帳的帳單本來就是台幣——銀行在刷的當下就換好匯了，
- * 所以那些金額不需要再換算。只有現金是使用者自己換的外幣。
+ * 所以那些金額不需要再換算。**刷在國外也一樣是台幣**：國內外的差別在於
+ * 會不會被收手續費（見 `CARD_REGIONS`），不在計價幣別。
+ * 只有現金是使用者自己換的外幣。
  *
  * 兩張交通卡的預設剛好相反：西瓜卡（Suica）在日本用外幣儲值，
  * 悠遊卡是台灣的卡，儲的是台幣。
@@ -117,6 +154,21 @@ export interface Trip extends Syncable {
   sealRateAt: string | null;
   /** 匯率來源，例如 'open.er-api.com'。留著以後要換來源時分辨得出舊資料。 */
   sealRateSource: string | null;
+  /**
+   * 海外刷卡的國外交易手續費率（%）。多數卡是 1.5。
+   *
+   * 跟 `sealRate` 一樣是「這趟當時的成本」，所以存在存檔上而不是寫死在程式裡：
+   * 換一張卡、換一家銀行費率就不同，而已經記完的旅程不該因此變動。
+   *
+   * **商品金額不含它**（使用者 2026-11-09 指定）——手續費在明細列與總計區
+   * 都是獨立呈現的一筆，不會加進任何一筆花費的金額裡。
+   *
+   * 預設一律 `DEFAULT_CARD_FEE_PCT`，**已封存的存檔與匯入的舊備份也一樣**
+   * （使用者 2026-11-09 指定：不要匯入後還得解封去改費率）。
+   * 代價是已封存旅程的總額會比以前高——那些手續費本來就付了。
+   * 要讓某趟不算，解除封存後把費率改成 0。見 docs/規格.md〈刷卡手續費〉。
+   */
+  cardFeePct: number;
 
   /**
    * 預留：多人共用時標記這個存檔屬於誰。
@@ -142,6 +194,14 @@ export interface Expense extends Syncable {
    * 見 docs/規格.md〈付款方式決定幣別〉。
    */
   amountKind: AmountKind;
+  /**
+   * 刷卡刷在國內還是海外。**只有 `paymentMethod` 是「刷卡」時有意義**，
+   * 其他付款方式也帶著這個值，但不會被讀。
+   *
+   * 海外刷卡會被收國外交易手續費，國內不會。記帳時在幣種旁邊切換，預設海外。
+   * 見 `CARD_REGIONS` 與 docs/規格.md〈刷卡手續費〉。
+   */
+  cardRegion: CardRegion;
   /** 金額，單位由 amountKind 決定。 */
   amount: number;
   note: string;

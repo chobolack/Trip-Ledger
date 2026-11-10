@@ -8,14 +8,17 @@
  * 見 docs/規格.md〈刪除就是真的刪除〉。
  */
 import { getDb } from './db';
-import type {
-  AmountKind,
-  CashEvent,
-  Category,
-  Expense,
-  PaymentMethod,
-  Trip,
-  TripStatus,
+import {
+  DEFAULT_CARD_FEE_PCT,
+  DEFAULT_CARD_REGION,
+  type AmountKind,
+  type CardRegion,
+  type CashEvent,
+  type Category,
+  type Expense,
+  type PaymentMethod,
+  type Trip,
+  type TripStatus,
 } from '../domain/types';
 
 export function newId(): string {
@@ -67,6 +70,7 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     sealRate: null,
     sealRateAt: null,
     sealRateSource: null,
+    cardFeePct: DEFAULT_CARD_FEE_PCT,
     ownerId: null, // 預留：多人共用，見 docs/規格.md〈預留但不做〉
   };
   const db = await getDb();
@@ -188,6 +192,8 @@ export interface NewExpenseInput {
   title: string;
   paymentMethod: PaymentMethod;
   amountKind: AmountKind;
+  /** 只有刷卡用得到；沒傳就是預設的海外。 */
+  cardRegion?: CardRegion;
   amount: number;
   note?: string;
 }
@@ -202,6 +208,7 @@ export async function addExpense(input: NewExpenseInput): Promise<Expense> {
     title: input.title,
     paymentMethod: input.paymentMethod,
     amountKind: input.amountKind,
+    cardRegion: input.cardRegion ?? DEFAULT_CARD_REGION,
     amount: input.amount,
     note: input.note ?? '',
     createdAt: ts,

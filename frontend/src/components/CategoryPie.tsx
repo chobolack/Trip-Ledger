@@ -89,8 +89,11 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
         ) : (
           <>
             <span className={s.readoutValue}>{fmtTwd(total)}</span>
+            {/* 旁邊那個總計是商品金額，比總計區的「完整總額」少了刷卡手續費。
+                兩個數字擺在同一頁相差一截卻沒說明，看起來就像漏算了。
+                只在沒有選中切片時顯示——選中時這一行要讓位給該類的數字。 */}
             <span className={s.readoutHint}>
-              共 {slices.length} 類{showPie ? '，點切片可篩選下方明細' : ''}
+              {showPie ? '圓餅圖不含手續費' : '不含手續費'}
             </span>
           </>
         )}

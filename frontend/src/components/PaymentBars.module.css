@@ -6,6 +6,38 @@
   gap: var(--sp-3);
 }
 
+/**
+ * 整列是一顆按鈕：點了就篩選下方明細。
+ *
+ * 整列可點而不是只有名字可點——長條本身就是使用者視線落點，
+ * 在手機上也才有夠大的觸控範圍。
+ */
+.row {
+  display: block;
+  width: 100%;
+  padding: 5px var(--sp-2);
+  /* 負的左右邊距讓按鈕的留白往外吃，長條仍與上下區塊切齊同一條左邊線。 */
+  margin: 0 calc(var(--sp-2) * -1);
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  background: none;
+  text-align: left;
+  transition:
+    border-color var(--dur) ease,
+    background var(--dur) ease;
+}
+
+.row:hover,
+.row:focus-visible {
+  border-color: var(--ac-deep);
+  outline: none;
+}
+
+.rowSelected {
+  border-color: var(--ac);
+  background: var(--ac-wash);
+}
+
 .head {
   display: flex;
   align-items: baseline;
@@ -33,6 +65,7 @@
 
 /* 軌道是整列寬，填滿的長度才是數值——長度比對齊同一條基準線才讀得準。 */
 .track {
+  display: block;
   overflow: hidden;
   height: 8px;
   border-radius: 3px;
@@ -46,6 +79,7 @@
  * 這個已經表達過的資訊再編碼一次，白白燒掉顏色這個頻道。
  */
 .fill {
+  display: block;
   height: 100%;
   /* 資料端收圓角，基準線端切齊，長度才不會被圓角虛胖。 */
   border-radius: 0 3px 3px 0;

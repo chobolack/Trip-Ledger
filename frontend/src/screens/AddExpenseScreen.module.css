@@ -61,10 +61,19 @@
 }
 
 /* 幣別切換放在金額區右上，跟著付款方式自動變，但可手動覆蓋。 */
-.kindSwitch {
+/* 金額框右上角的切換區：幣種，加上刷卡時才出現的國內／海外。
+   兩組並排，各自內部緊貼，組與組之間拉開才不會被看成同一排選項。 */
+.switches {
   position: absolute;
   top: var(--sp-3);
   right: var(--sp-3);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2) var(--sp-3);
+}
+
+.kindSwitch {
   display: flex;
   gap: 4px;
 }

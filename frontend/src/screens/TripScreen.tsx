@@ -18,7 +18,7 @@ import {
 } from '../data/repo';
 import { currencyLabel } from '../domain/currencies';
 import { tripTotals } from '../domain/money';
-import type { Category, Expense, Trip } from '../domain/types';
+import type { Category, Expense, PaymentMethod, Trip } from '../domain/types';
 import s from './TripScreen.module.css';
 
 export function TripScreen() {
@@ -28,15 +28,24 @@ export function TripScreen() {
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [deleteArmed, setDeleteArmed] = useState(false);
-  /** 點圓餅切片選的分類，只影響下方明細；圓餅本身永遠顯示完整占比。 */
+  /* 點圓餅切片選的分類、點長條選的付款方式。只影響下方明細，
+     圖表本身永遠顯示完整占比——否則點一下圖就只剩一片，沒得比了。
+
+     兩個篩選各自獨立、同時成立就是交集。刻意不做成「選一個就清掉另一個」：
+     那會讓使用者點了付款方式、分類的高亮卻無聲消失。 */
   const [filter, setFilter] = useState<Category | null>(null);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | null>(null);
   const [busy, setBusy] = useState<null | 'sealing' | 'retrying'>(null);
   const [rateError, setRateError] = useState<string | null>(null);
+  /* 手續費率的輸入框是獨立的字串狀態，不直接綁 trip.cardFeePct——
+     清空輸入框時中間會經過空字串，直接寫進資料會變成 NaN。 */
+  const [feePctText, setFeePctText] = useState('');
 
   const load = useCallback(async () => {
     if (!id) return;
     const t = await getTrip(id);
     setTrip(t ?? null);
+    setFeePctText(t ? String(t.cardFeePct) : '');
     setExpenses(t ? await listExpenses(t.id) : []);
   }, [id]);
 
@@ -67,7 +76,11 @@ export function TripScreen() {
   const sealed = trip.status === 'archived';
   const dayCount = spanInDays(trip.startedOn, trip.endedOn ?? today());
   const totals = tripTotals(trip, expenses);
-  const shown = filter ? expenses.filter((e) => e.category === filter) : expenses;
+  const shown = expenses.filter(
+    (e) =>
+      (filter === null || e.category === filter) &&
+      (paymentFilter === null || e.paymentMethod === paymentFilter),
+  );
 
   /**
    * 封存：抓一次當日匯率凍結起來，把現金換算成台幣。
@@ -110,6 +123,23 @@ export function TripScreen() {
     await load();
   }
 
+  /**
+   * 離開輸入框才寫入，不是邊打邊寫——打到一半的「1.」「」會變成 NaN。
+   *
+   * 認不得的值退回原本的，不寫 0：使用者多半是打錯或清空，
+   * 默默當成 0 會讓整趟的手續費無聲消失。
+   */
+  async function onFeePctCommit() {
+    const n = Number(feePctText);
+    if (feePctText.trim() === '' || !Number.isFinite(n) || n < 0) {
+      setFeePctText(String(trip!.cardFeePct));
+      return;
+    }
+    if (n === trip!.cardFeePct) return;
+    await updateTrip(trip!.id, { cardFeePct: n });
+    await load();
+  }
+
   async function onDeleteExpense(expenseId: string) {
     await deleteExpense(expenseId);
     await load();
@@ -137,7 +167,40 @@ export function TripScreen() {
           <span className="hudLabel">
             {currencyLabel(trip.currency)} · {sealed ? '已封存' : '進行中'}
           </span>
-          <h1 className={s.name}>{trip.name}</h1>
+          {/* 名稱與存檔層級的動作同一列。這兩顆按鈕原本在整頁最下方，
+              但明細一長就得捲很久才按得到——封存／解封是看完數字後的決定，
+              動作該留在數字旁邊。窄畫面會自動換到名稱下一行。 */}
+          <div className={s.nameRow}>
+            <h1 className={s.name}>{trip.name}</h1>
+            <div className={s.headActions}>
+              {sealed ? (
+                <button type="button" className={`btnGhost ${s.headBtn}`} onClick={onUnseal}>
+                  解除封存
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`btnGhost ${s.headBtn}`}
+                  onClick={onSeal}
+                  disabled={busy !== null}
+                >
+                  {busy !== 'sealing'
+                    ? '結束旅程並封存'
+                    : trip.sealRate === null
+                      ? '抓取匯率並封存中…'
+                      : '封存中…'}
+                </button>
+              )}
+              <button
+                type="button"
+                className={`btnGhost ${s.headBtn} ${s.danger}`}
+                onClick={onDeleteTrip}
+                onBlur={() => setDeleteArmed(false)}
+              >
+                {deleteArmed ? '再按一次確認刪除' : '刪除存檔'}
+              </button>
+            </div>
+          </div>
           <div className={s.readouts}>
             <div className={s.readout}>
               <span className="hudLabel">出發</span>
@@ -177,6 +240,30 @@ export function TripScreen() {
           </p>
         )}
 
+        {/* 海外刷卡手續費率。封存後唯讀——改它會動到已凍結的總額，
+            跟封存匯率同一條理由。要改就先解除封存。 */}
+        {!sealed && (
+          <label className={s.feePct}>
+            <span className="hudLabel">海外刷卡手續費</span>
+            <span className={s.feePctInput}>
+              <input
+                type="number"
+                className="input"
+                inputMode="decimal"
+                min={0}
+                max={10}
+                step={0.1}
+                value={feePctText}
+                onChange={(e) => setFeePctText(e.target.value)}
+                onBlur={onFeePctCommit}
+                aria-label="海外刷卡手續費率，百分比"
+              />
+              <span className={s.feePctUnit}>%</span>
+            </span>
+            <span className="fieldHint">多數信用卡的國外交易手續費是 1.5%。只影響「海外刷卡」的紀錄</span>
+          </label>
+        )}
+
         {/* 統計只在封存後出現：有凍結匯率才能把外幣現金與台幣放進同一個圓餅。 */}
         {sealed && (
           <StatsPanel
@@ -184,51 +271,39 @@ export function TripScreen() {
             expenses={expenses}
             selected={filter}
             onSelect={setFilter}
+            selectedPayment={paymentFilter}
+            onSelectPayment={setPaymentFilter}
           />
         )}
 
         <div className={s.listHead}>
           <span className="hudLabel">明細 · Entries</span>
-          {/* 篩選提示放在這裡而不是圓餅圖裡：解除封存後圓餅圖會消失，
-              篩選還留著，沒有這顆按鈕就沒辦法取消。 */}
+          {/* 篩選提示放在這裡而不是圖表裡：解除封存後圖表會消失，
+              篩選還留著，沒有這幾顆按鈕就沒辦法取消。
+              兩個篩選各給一顆，筆數只報一次——那是交集後的結果，
+              掛在任何一顆上都會讓人以為是那個條件單獨的筆數。 */}
           {filter && (
             <button type="button" className={s.filterChip} onClick={() => setFilter(null)}>
-              只顯示「{filter}」{shown.length} 筆
+              種類：{filter}
               <span aria-hidden>✕</span>
             </button>
           )}
+          {paymentFilter && (
+            <button type="button" className={s.filterChip} onClick={() => setPaymentFilter(null)}>
+              付款：{paymentFilter}
+              <span aria-hidden>✕</span>
+            </button>
+          )}
+          {(filter || paymentFilter) && <span className={s.filterCount}>{shown.length} 筆</span>}
         </div>
         <ExpenseList
           trip={trip}
           expenses={shown}
           readOnly={sealed}
-          filtered={filter !== null}
+          filtered={filter !== null || paymentFilter !== null}
           onDelete={onDeleteExpense}
         />
 
-        <div className={s.actions}>
-          {sealed ? (
-            <button type="button" className="btnGhost" onClick={onUnseal}>
-              解除封存
-            </button>
-          ) : (
-            <button type="button" className="btnGhost" onClick={onSeal} disabled={busy !== null}>
-              {busy !== 'sealing'
-                ? '結束旅程並封存'
-                : trip.sealRate === null
-                  ? '抓取匯率並封存中…'
-                  : '封存中…'}
-            </button>
-          )}
-          <button
-            type="button"
-            className={`btnGhost ${s.danger}`}
-            onClick={onDeleteTrip}
-            onBlur={() => setDeleteArmed(false)}
-          >
-            {deleteArmed ? '再按一次確認刪除' : '刪除存檔'}
-          </button>
-        </div>
       </div>
     </>
   );

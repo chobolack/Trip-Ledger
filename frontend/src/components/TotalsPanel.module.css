@@ -4,7 +4,17 @@
   padding: var(--sp-5) var(--sp-4) var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: linear-gradient(180deg, var(--panel), transparent 70%);
+  /**
+   * 實心，不是淡出到透明。
+   *
+   * 原本是 `linear-gradient(180deg, var(--panel), transparent 70%)`，
+   * 跟備份、新建存檔那些面板同一套 HUD 手法。但在封存後的成績單頁上，
+   * 其他區塊（統計圖表卡、明細的日期區塊）都是實心的 `--panel`，
+   * 只有這一塊淡到透明，看起來像沒畫完——而且這個面板長高之後
+   * （手續費、完整總額、匯率待補提示）底下那個有自己底色的總額框
+   * 會浮在一片透明上，對比更明顯。使用者 2026-11-10 指定改實心。
+   */
+  background: var(--panel);
 }
 
 .panelTitle {
@@ -73,6 +83,14 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--sp-3);
+}
+
+/* 手續費：獨立的加項，商品金額不含它。比總額小一號，但看得清楚。 */
+.feeValue {
+  font-family: var(--f-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
 }
 
 .grandValue {

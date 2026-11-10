@@ -24,7 +24,17 @@ interface Props {
 export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
   const domestic = isDomestic(trip);
   const sealed = trip.status === 'archived';
-  const { twdConfirmed, foreignSpent, foreignAsTwd, grandTotalTwd } = totals;
+  const { twdConfirmed, foreignSpent, foreignAsTwd, cardFeeTwd, cardFeeUnknown, grandTotalTwd } =
+    totals;
+
+  /* 手續費是獨立的一筆加項——商品金額不含它（使用者指定），
+     所以這裡要把它單獨列出來，不能悄悄併進上面任何一個數字。 */
+  const feeRow = cardFeeTwd > 0 && (
+    <div className={s.grandRow}>
+      <span className="hudLabel">刷卡手續費</span>
+      <span className={s.feeValue}>＋{fmtTwd(cardFeeTwd)}</span>
+    </div>
+  );
 
   // 整趟台幣的存檔沒有外幣，一個數字就說完了。
   if (domestic) {
@@ -38,6 +48,15 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
           </div>
           <p className={s.note}>整趟都是台幣，不需要換算</p>
         </div>
+        {cardFeeTwd > 0 && (
+          <div className={s.grand}>
+            {feeRow}
+            <div className={s.grandRow}>
+              <span className="hudLabel">完整總額</span>
+              <span className={s.grandValue}>{fmtTwd(twdConfirmed + cardFeeTwd)}</span>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -76,10 +95,17 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
 
       {grandTotalTwd !== null && (
         <div className={s.grand}>
+          {feeRow}
           <div className={s.grandRow}>
             <span className="hudLabel">完整總額</span>
             <span className={s.grandValue}>{fmtTwd(grandTotalTwd)}</span>
           </div>
+          {cardFeeUnknown > 0 && (
+            <p className={s.note}>
+              另有 {cardFeeUnknown} 筆海外刷卡是用外幣記的，沒有匯率算不出手續費，
+              手續費與總額都是低估的
+            </p>
+          )}
         </div>
       )}
 
