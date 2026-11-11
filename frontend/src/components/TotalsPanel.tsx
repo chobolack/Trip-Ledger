@@ -14,9 +14,11 @@ interface Props {
 /**
  * 花費總計。
  *
- * 呈現規則來自原使用者：**確定台幣花費與外幣現金花費是兩個不相加的數字**。
- * 刷卡與轉帳的帳單本來就是台幣，不需換算；外幣現金維持原幣顯示。
+ * 呈現規則來自原使用者：**確定台幣花費與外幣花費是兩個不相加的數字**。
  * 要合成一個總額，得有匯率——而匯率只在封存那一刻抓一次並凍結。
+ *
+ * 兩格都是**依計價幣別**分組（`amountKind`），不是依付款方式。
+ * 統計圖表那邊才是依付款方式分組，所以兩邊的數字本來就不會一一對應。
  *
  * 使用者已表示這個呈現方式大概率會改，所以這裡只負責顯示，
  * 加總邏輯全在 domain/money.ts，改的時候不用動這個檔案的計算。
@@ -70,11 +72,15 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
         <div className={s.figure}>
           <span className={`${s.big} ${s.twd}`}>{fmtTwd(twdConfirmed)}</span>
         </div>
-        <p className={s.note}>刷卡與轉帳在付款當下就換好匯了，帳單直接是台幣</p>
+        <p className={s.note}>以台幣計價的紀錄，不需要換算</p>
       </div>
 
       <div className={s.block}>
-        <span className="hudLabel">{currencyName(trip.currency)}現金花費</span>
+        {/* 不叫「現金花費」。這一格算的是所有以外幣計價的紀錄，依 amountKind 分組，
+            跟付款方式無關——西瓜卡本來就用日圓儲值、刷卡也可能記成日圓，
+            兩者都會落進這裡。叫現金會跟統計圖表的「現金」長條對不起來，
+            而那是按付款方式分組的。2026-11-11 使用者指出後改名。 */}
+        <span className="hudLabel">{currencyName(trip.currency)}花費</span>
         <div className={s.figure}>
           <span className={`${s.big} ${s.foreign}`}>
             {trip.currency} {fmt(foreignSpent)}
