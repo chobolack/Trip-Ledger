@@ -3,6 +3,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { useTripSummaries } from '../hooks/useTripSummaries';
 import { currencyLabel } from '../domain/currencies';
 import type { TripSummary } from '../data/repo';
+import { isRevising } from '../domain/types';
 import s from './SaveSlotsScreen.module.css';
 
 /**
@@ -73,7 +74,7 @@ function Slot({ summary, index }: { summary: TripSummary; index: number }) {
       <span className={s.slotTop}>
         <span className="hudLabel">SLOT {String(index + 1).padStart(2, '0')}</span>
         <span className={`${s.badge} ${sealed ? s.badgeSealed : s.badgeActive}`}>
-          {sealed ? '唯讀' : '進行中'}
+          {isRevising(trip) ? '修訂中' : sealed ? '唯讀' : '進行中'}
         </span>
       </span>
       <span className={s.name}>{trip.name}</span>

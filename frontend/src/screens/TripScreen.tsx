@@ -6,19 +6,21 @@ import { StatsPanel } from '../components/StatsPanel';
 import { TotalsPanel } from '../components/TotalsPanel';
 import { fetchRateToTwd } from '../data/rates';
 import {
+  beginRevision,
   deleteExpense,
   deleteTrip,
+  endRevision,
   getTrip,
   listExpenses,
   sealTrip,
   spanInDays,
   today,
-  unsealTrip,
   updateTrip,
 } from '../data/repo';
+import { NARROW, useMediaQuery } from '../hooks/useMediaQuery';
 import { currencyLabel } from '../domain/currencies';
 import { tripTotals } from '../domain/money';
-import type { Category, Expense, PaymentMethod, Trip } from '../domain/types';
+import { isRevising, type Category, type Expense, type PaymentMethod, type Trip } from '../domain/types';
 import s from './TripScreen.module.css';
 
 export function TripScreen() {
@@ -28,6 +30,9 @@ export function TripScreen() {
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [deleteArmed, setDeleteArmed] = useState(false);
+  /* 封存也是兩段式確認。封存後沒有「變回進行中」的路（使用者 2026-11-11 拿掉了
+     解除封存），所以誤觸要在這裡擋，不是事後救。 */
+  const [sealArmed, setSealArmed] = useState(false);
   /* 點圓餅切片選的分類、點長條選的付款方式。只影響下方明細，
      圖表本身永遠顯示完整占比——否則點一下圖就只剩一片，沒得比了。
 
@@ -40,6 +45,9 @@ export function TripScreen() {
   /* 手續費率的輸入框是獨立的字串狀態，不直接綁 trip.cardFeePct——
      清空輸入框時中間會經過空字串，直接寫進資料會變成 NaN。 */
   const [feePctText, setFeePctText] = useState('');
+  /* 手機上封存／刪除要換到抬頭卡外面。這是少數 CSS 做不到的情況——
+     元素得換父層，見 useMediaQuery 的說明。 */
+  const narrow = useMediaQuery(NARROW);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -74,6 +82,10 @@ export function TripScreen() {
   }
 
   const sealed = trip.status === 'archived';
+  /* 修訂中：仍然是封存的（圖表、結束日、匯率照舊），只有明細可寫。
+     所以底下「長什麼樣」看 sealed，「能不能改」看 writable，兩者不能混用。 */
+  const revising = isRevising(trip);
+  const writable = !sealed || revising;
   const dayCount = spanInDays(trip.startedOn, trip.endedOn ?? today());
   const totals = tripTotals(trip, expenses);
   const shown = expenses.filter(
@@ -89,6 +101,11 @@ export function TripScreen() {
    * 這個 App 是離線優先的，不能因為沒網路就不准結束旅程。
    */
   async function onSeal() {
+    if (!sealArmed) {
+      setSealArmed(true);
+      return;
+    }
+    setSealArmed(false);
     setBusy('sealing');
     setRateError(null);
     let rate = null;
@@ -118,8 +135,13 @@ export function TripScreen() {
     setBusy(null);
   }
 
-  async function onUnseal() {
-    await unsealTrip(trip!.id);
+  async function onBeginRevision() {
+    await beginRevision(trip!.id);
+    await load();
+  }
+
+  async function onEndRevision() {
+    await endRevision(trip!.id);
     await load();
   }
 
@@ -155,51 +177,63 @@ export function TripScreen() {
     nav('/saves', { replace: true });
   }
 
+  /* 存檔層級的動作。只建一份，兩個位置共用——複製一份用 CSS 藏起來的話，
+     輔助技術會讀到兩組一樣的按鈕。 */
+  const actionButtons = (
+    <>
+      {revising ? (
+        <button type="button" className={`btnPri ${s.headBtn}`} onClick={onEndRevision}>
+          完成修改
+        </button>
+      ) : sealed ? (
+        <button type="button" className={`btnGhost ${s.headBtn}`} onClick={onBeginRevision}>
+          修改紀錄
+        </button>
+      ) : (
+        <button
+          type="button"
+          className={`btnGhost ${s.headBtn}`}
+          onClick={onSeal}
+          onBlur={() => setSealArmed(false)}
+          disabled={busy !== null}
+        >
+          {busy !== 'sealing'
+            ? sealArmed
+              ? '再按一次確認封存'
+              : '結束旅程並封存'
+            : trip.sealRate === null
+              ? '抓取匯率並封存中…'
+              : '封存中…'}
+        </button>
+      )}
+      <button
+        type="button"
+        className={`btnGhost ${s.headBtn} ${s.danger}`}
+        onClick={onDeleteTrip}
+        onBlur={() => setDeleteArmed(false)}
+      >
+        {deleteArmed ? '再按一次確認刪除' : '刪除存檔'}
+      </button>
+    </>
+  );
+
   return (
     <>
       <ScreenHeader
-        title={sealed ? '唯讀成績單' : '存檔'}
-        sub={sealed ? 'Sealed' : 'In Progress'}
+        title={revising ? '修訂中' : sealed ? '唯讀成績單' : '存檔'}
+        sub={revising ? 'Revising' : sealed ? 'Sealed' : 'In Progress'}
         backTo="/saves"
       />
       <div className={s.body}>
         <div className={`${s.head} ${sealed ? s.sealedHead : ''}`}>
           <span className="hudLabel">
-            {currencyLabel(trip.currency)} · {sealed ? '已封存' : '進行中'}
+            {currencyLabel(trip.currency)} · {revising ? '已封存 · 修訂中' : sealed ? '已封存' : '進行中'}
           </span>
-          {/* 名稱與存檔層級的動作同一列。這兩顆按鈕原本在整頁最下方，
-              但明細一長就得捲很久才按得到——封存／解封是看完數字後的決定，
-              動作該留在數字旁邊。窄畫面會自動換到名稱下一行。 */}
+          {/* 寬畫面時動作跟名稱同一列；窄畫面時整組移到抬頭卡外面自成一列，
+              見下方 narrow 的分支。 */}
           <div className={s.nameRow}>
             <h1 className={s.name}>{trip.name}</h1>
-            <div className={s.headActions}>
-              {sealed ? (
-                <button type="button" className={`btnGhost ${s.headBtn}`} onClick={onUnseal}>
-                  解除封存
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={`btnGhost ${s.headBtn}`}
-                  onClick={onSeal}
-                  disabled={busy !== null}
-                >
-                  {busy !== 'sealing'
-                    ? '結束旅程並封存'
-                    : trip.sealRate === null
-                      ? '抓取匯率並封存中…'
-                      : '封存中…'}
-                </button>
-              )}
-              <button
-                type="button"
-                className={`btnGhost ${s.headBtn} ${s.danger}`}
-                onClick={onDeleteTrip}
-                onBlur={() => setDeleteArmed(false)}
-              >
-                {deleteArmed ? '再按一次確認刪除' : '刪除存檔'}
-              </button>
-            </div>
+            {!narrow && <div className={s.headActions}>{actionButtons}</div>}
           </div>
           <div className={s.readouts}>
             <div className={s.readout}>
@@ -217,13 +251,17 @@ export function TripScreen() {
           </div>
         </div>
 
-        {!sealed && (
+        {/* 窄畫面：動作移到抬頭卡與花費總計之間自成一列。
+            擠在名稱旁邊時，名稱一長版面就塌，字也被迫縮到很小。 */}
+        {narrow && <div className={s.standaloneActions}>{actionButtons}</div>}
+
+        {writable && (
           <button
             type="button"
             className={`btnPri ${s.addBtn}`}
             onClick={() => nav(`/trip/${trip.id}/add`)}
           >
-            ＋ 記帳
+            {revising ? '＋ 補記一筆' : '＋ 記帳'}
           </button>
         )}
 
@@ -241,8 +279,8 @@ export function TripScreen() {
         )}
 
         {/* 海外刷卡手續費率。封存後唯讀——改它會動到已凍結的總額，
-            跟封存匯率同一條理由。要改就先解除封存。 */}
-        {!sealed && (
+            跟封存匯率同一條理由。要改就先進修訂模式。 */}
+        {writable && (
           <label className={s.feePct}>
             <span className="hudLabel">海外刷卡手續費</span>
             <span className={s.feePctInput}>
@@ -299,9 +337,10 @@ export function TripScreen() {
         <ExpenseList
           trip={trip}
           expenses={shown}
-          readOnly={sealed}
+          readOnly={!writable}
           filtered={filter !== null || paymentFilter !== null}
           onDelete={onDeleteExpense}
+          onEdit={(expenseId) => nav(`/trip/${trip.id}/edit/${expenseId}`)}
         />
 
       </div>

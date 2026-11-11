@@ -44,9 +44,9 @@
   /* 剩下的寬度都給名稱；min-width: 0 才允許它縮到比內容窄並折行。 */
   flex: 1 1 auto;
   min-width: 0;
-  /* 窄畫面縮小，讓名稱跟右邊兩顆按鈕擠得進同一行。
-     上限就是原本的 24px，所以寬畫面看起來沒變。 */
-  font-size: clamp(18px, 5.5vw, 24px);
+  /* 窄畫面縮小一些。上限就是原本的 24px，所以寬畫面看起來沒變。
+     手機上按鈕已經移走、名稱獨佔整行，所以下限不必壓太低。 */
+  font-size: clamp(20px, 5.5vw, 24px);
   font-weight: 700;
   letter-spacing: 0.04em;
   /* 沒有空白可斷的長名稱（例如一串英數）也要能折，否則會撐破卡片。 */
@@ -63,12 +63,31 @@
 
 /* 抬頭裡的按鈕比頁面主要動作小一號——它們是次要操作，不該搶走名稱的分量。 */
 .headBtn {
-  /* 窄畫面連內距一起收，省下來的寬度都還給名稱。 */
-  padding: clamp(5px, 1.6vw, 7px) clamp(8px, 3vw, 12px);
-  font-size: clamp(11px, 3vw, 12px);
+  padding: 7px 12px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   /* 字不准折，「解除封存」被折成兩行比什麼都醜。 */
   white-space: nowrap;
+}
+
+/**
+ * 窄畫面時動作自成一列，夾在抬頭卡與花費總計之間。
+ *
+ * 不跟名稱擠同一列：名稱一長就會把按鈕逼到下一行並靠左，短名稱與長名稱
+ * 長出兩種版面；為了擠進去而把字縮小，在手機上又細得難按。
+ * 獨立一列之後寬度充裕，所以按鈕尺寸也跟著回到正常大小。
+ */
+.standaloneActions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+/* 兩顆等分整行。靠右放小小兩顆會像漏掉的殘留物，撐滿才看得出是刻意的。 */
+.standaloneActions .headBtn {
+  flex: 1;
+  padding: 11px 12px;
+  font-size: 13px;
 }
 
 /* 讀數格：標籤在上、數值在下，等寬對齊。 */

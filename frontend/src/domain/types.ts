@@ -40,6 +40,16 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
  * 只有使用者知道差別，所以讓他在記帳當下就選定，而不是事後靠日期猜。
  * 見 docs/規格.md〈刷卡手續費〉。
  */
+/** 已封存、但暫時開放改明細。見 `Trip.revising`。 */
+export function isRevising(trip: { status: TripStatus; revising?: boolean }): boolean {
+  return trip.status === 'archived' && trip.revising === true;
+}
+
+/** 明細能不能動（新增、修改、刪除）：進行中，或封存後進了修訂模式。 */
+export function isWritable(trip: { status: TripStatus; revising?: boolean }): boolean {
+  return trip.status === 'active' || isRevising(trip);
+}
+
 export const CARD_REGIONS = ['overseas', 'domestic'] as const;
 export type CardRegion = (typeof CARD_REGIONS)[number];
 
@@ -169,6 +179,20 @@ export interface Trip extends Syncable {
    * 要讓某趟不算，解除封存後把費率改成 0。見 docs/規格.md〈刷卡手續費〉。
    */
   cardFeePct: number;
+
+  /**
+   * 修訂中：已封存的存檔暫時開放改明細（使用者 2026-11-11 指定）。
+   *
+   * 跟「解除封存」是兩回事。解除封存會讓存檔變回進行中——結束日清掉、
+   * 天數重算到今天、跑回存檔列表最上面；但回頭改舊帳的人只是要修幾筆細項，
+   * 旅程早就結束了。修訂中的存檔 `status` 仍是 `archived`，結束日、匯率、
+   * 圖表都照舊，只有明細可以新增、修改、刪除。
+   *
+   * **刻意做成選填**：沒有這欄＝不在修訂中，所以既有資料不需要遷移
+   * （遷移只會跑一次，能不加就不加，見 db.ts）。判斷一律用 `isRevising()`，
+   * 不要直接讀這欄。只對 `archived` 有意義。
+   */
+  revising?: boolean;
 
   /**
    * 預留：多人共用時標記這個存檔屬於誰。

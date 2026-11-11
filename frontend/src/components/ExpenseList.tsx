@@ -11,6 +11,8 @@ interface Props {
   /** 傳進來的是篩選過的子集合，空的時候要說「這個條件沒有」而不是「都沒有」。 */
   filtered?: boolean;
   onDelete: (id: string) => void;
+  /** 點一筆明細要修改它。唯讀時不會被呼叫。 */
+  onEdit: (id: string) => void;
 }
 
 const WEEKDAYS = '日一二三四五六';
@@ -21,7 +23,7 @@ function dayLabel(date: string): string {
   return date.replace(/-/g, '/') + w;
 }
 
-export function ExpenseList({ trip, expenses, readOnly, filtered, onDelete }: Props) {
+export function ExpenseList({ trip, expenses, readOnly, filtered, onDelete, onEdit }: Props) {
   if (expenses.length === 0) {
     return (
       <p className={s.empty}>
@@ -53,7 +55,14 @@ export function ExpenseList({ trip, expenses, readOnly, filtered, onDelete }: Pr
             </span>
           </header>
           {day.expenses.map((e) => (
-            <Row key={e.id} trip={trip} expense={e} readOnly={readOnly} onDelete={onDelete} />
+            <Row
+              key={e.id}
+              trip={trip}
+              expense={e}
+              readOnly={readOnly}
+              onDelete={onDelete}
+              onEdit={onEdit}
+            />
           ))}
         </section>
       ))}
@@ -66,11 +75,13 @@ function Row({
   expense,
   readOnly,
   onDelete,
+  onEdit,
 }: {
   trip: Trip;
   expense: Expense;
   readOnly: boolean;
   onDelete: (id: string) => void;
+  onEdit: (id: string) => void;
 }) {
   const [armed, setArmed] = useState(false);
   // 整趟台幣的存檔不分幣別，一律當台幣顯示。
@@ -79,21 +90,40 @@ function Row({
      null 代表這筆是海外刷卡、用外幣記、又還沒有匯率，算不出來。 */
   const fee = cardFeeTwd(trip, expense);
 
+  const main = (
+    <>
+      <span className={s.rowMain}>
+        <span className={s.title}>{expense.title || expense.category}</span>
+        {/* 刷卡才標國內／海外：同樣是刷卡，收不收手續費全看這個，
+            不顯示的話使用者只會看到有的有子行有的沒有，猜不出為什麼。 */}
+        <span className={s.tags}>
+          {expense.category} · {expense.paymentMethod}
+          {expense.paymentMethod === '刷卡' && `（${CARD_REGION_LABEL[expense.cardRegion]}）`}
+        </span>
+      </span>
+      <span className={`${s.amount} ${asTwd ? '' : s.amountForeign}`}>
+        {asTwd ? fmtTwd(expense.amount) : `${trip.currency} ${fmt(expense.amount)}`}
+      </span>
+    </>
+  );
+
   return (
     <div className={s.entry}>
       <div className={s.row}>
-        <span className={s.rowMain}>
-          <span className={s.title}>{expense.title || expense.category}</span>
-          {/* 刷卡才標國內／海外：同樣是刷卡，收不收手續費全看這個，
-              不顯示的話使用者只會看到有的有子行有的沒有，猜不出為什麼。 */}
-          <span className={s.tags}>
-            {expense.category} · {expense.paymentMethod}
-            {expense.paymentMethod === '刷卡' && `（${CARD_REGION_LABEL[expense.cardRegion]}）`}
-          </span>
-        </span>
-        <span className={`${s.amount} ${asTwd ? '' : s.amountForeign}`}>
-          {asTwd ? fmtTwd(expense.amount) : `${trip.currency} ${fmt(expense.amount)}`}
-        </span>
+        {/* 可寫時整列（刪除鈕除外）是一顆按鈕，點了去修改。
+            刪除鈕不能包在裡面——按鈕裡不能再放按鈕，而且兩個動作要分得開。 */}
+        {readOnly ? (
+          main
+        ) : (
+          <button
+            type="button"
+            className={s.rowBtn}
+            onClick={() => onEdit(expense.id)}
+            aria-label={`修改：${expense.title || expense.category}`}
+          >
+            {main}
+          </button>
+        )}
         {!readOnly && (
           <button
             type="button"

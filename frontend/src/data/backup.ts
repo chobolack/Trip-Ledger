@@ -301,6 +301,9 @@ function normalize<T>(store: 'trips' | 'expenses' | 'cashEvents', row: T): T {
          補 0 的話，匯入一份舊備份就得先解除封存、把費率改掉才算得出手續費——
          而那些手續費本來就付了。代價是匯入後的總額會比檔案原本的數字高。 */
       cardFeePct: t.cardFeePct ?? DEFAULT_CARD_FEE_PCT,
+      /* 修訂中是「這台裝置上正在改」的暫時狀態，不該跟著備份檔搬家——
+         匯入一份別人修到一半時匯出的檔，不應該在這裡也開著可寫。 */
+      revising: false,
       ownerId: t.ownerId ?? null,
     } as T;
   }

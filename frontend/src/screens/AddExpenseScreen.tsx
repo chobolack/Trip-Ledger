@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { addExpense, getTrip, today } from '../data/repo';
+import { addExpense, getExpense, getTrip, today, updateExpense } from '../data/repo';
 import { currencyName } from '../domain/currencies';
 import { fmt, isDomestic } from '../domain/money';
 import {
@@ -11,6 +11,8 @@ import {
   DEFAULT_AMOUNT_KIND,
   DEFAULT_CARD_REGION,
   PAYMENT_METHODS,
+  isRevising,
+  isWritable,
   type AmountKind,
   type CardRegion,
   type Category,
@@ -28,9 +30,16 @@ function parseAmount(raw: string): number {
   return Number(normalized);
 }
 
+/**
+ * 記帳表單。新增與修改共用：網址帶 `expenseId` 就是修改那一筆。
+ *
+ * 兩種模式只差三件事——進來時要不要預填、送出是新增還是覆寫、
+ * 送出後留在表單（連續記帳）還是回明細（改完就走）。
+ */
 export function AddExpenseScreen() {
-  const { id } = useParams<{ id: string }>();
+  const { id, expenseId } = useParams<{ id: string; expenseId?: string }>();
   const nav = useNavigate();
+  const editing = expenseId !== undefined;
 
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [amount, setAmount] = useState('');
@@ -45,10 +54,42 @@ export function AddExpenseScreen() {
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
 
+  /* 修改模式：要改的那筆找不到（被刪了、或網址的存檔對不上）。 */
+  const [missing, setMissing] = useState(false);
+
   useEffect(() => {
     if (!id) return;
-    void getTrip(id).then((t) => setTrip(t ?? null));
-  }, [id]);
+    let stale = false;
+    void (async () => {
+      const t = await getTrip(id);
+      /* 修改模式要先把原值填好才顯示表單，否則會先閃一下空白表單。
+         所以存檔跟那筆帳一起讀完，才一次 set。 */
+      const e = t && expenseId ? await getExpense(expenseId) : undefined;
+      if (stale) return;
+      if (expenseId && t) {
+        // tripId 對不上＝網址是拼湊的，當成找不到，不要跨存檔改帳。
+        if (!e || e.tripId !== t.id) {
+          setMissing(true);
+        } else {
+          setAmount(String(e.amount));
+          setTitle(e.title);
+          setCategory(e.category);
+          setMethod(e.paymentMethod);
+          setKind(e.amountKind);
+          setRegion(e.cardRegion);
+          setSpentOn(e.spentOn);
+        }
+      } else if (t && isRevising(t) && t.endedOn) {
+        /* 修訂舊存檔時補記的帳，日期預設旅程最後一天而不是今天——
+           今天多半是旅程結束幾個月後，照今天記會把結束日一路拉到現在。 */
+        setSpentOn(t.endedOn);
+      }
+      setTrip(t ?? null);
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [id, expenseId]);
 
   /**
    * 換付款方式就把幣別重設成該方式的預設值。
@@ -80,14 +121,26 @@ export function AddExpenseScreen() {
     );
   }
 
-  if (trip.status === 'archived') {
+  if (!isWritable(trip)) {
     return (
       <>
         <ScreenHeader title="唯讀存檔" sub="Sealed" backTo={`/trip/${trip.id}`} />
         <div className={s.body}>
           <p className="errorText">
-            這個存檔已經封存，是唯讀的成績單。要繼續記帳請先回上一頁解除封存。
+            這個存檔已經封存，是唯讀的成績單。要{editing ? '修改紀錄' : '補記帳'}
+            請先回上一頁按「修改紀錄」。
           </p>
+        </div>
+      </>
+    );
+  }
+
+  if (missing) {
+    return (
+      <>
+        <ScreenHeader title="找不到紀錄" sub="Not Found" backTo={`/trip/${trip.id}`} />
+        <div className={s.body}>
+          <p className="errorText">這筆紀錄不存在，可能已經被刪除。</p>
         </div>
       </>
     );
@@ -108,6 +161,20 @@ export function AddExpenseScreen() {
 
     setError(null);
     try {
+      if (expenseId !== undefined) {
+        await updateExpense(expenseId, {
+          spentOn: spentOn || today(),
+          category,
+          title: title.trim(),
+          paymentMethod: method,
+          amountKind: effectiveKind,
+          cardRegion: region,
+          amount: value,
+        });
+        // 改完就回明細，不像新增那樣留在表單——沒有「接著改下一筆」這回事。
+        nav(`/trip/${trip!.id}`);
+        return;
+      }
       await addExpense({
         tripId: trip!.id,
         spentOn: spentOn || today(),
@@ -133,7 +200,11 @@ export function AddExpenseScreen() {
 
   return (
     <>
-      <ScreenHeader title="記帳" sub="New Entry" backTo={`/trip/${trip.id}`} />
+      <ScreenHeader
+        title={editing ? '修改紀錄' : '記帳'}
+        sub={editing ? 'Edit Entry' : 'New Entry'}
+        backTo={`/trip/${trip.id}`}
+      />
       <div className={s.body}>
         <div className={s.amountBox}>
           <span className="hudLabel">金額</span>
@@ -260,10 +331,10 @@ export function AddExpenseScreen() {
 
         <div className={s.actions}>
           <button type="button" className="btnPri" onClick={submit}>
-            記下這筆
+            {editing ? '儲存修改' : '記下這筆'}
           </button>
           <button type="button" className="btnGhost" onClick={() => nav(`/trip/${trip.id}`)}>
-            完成
+            {editing ? '取消' : '完成'}
           </button>
         </div>
       </div>

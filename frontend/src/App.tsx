@@ -24,6 +24,8 @@ export function App() {
         <Route path="/data" element={<DataScreen />} />
         <Route path="/trip/:id" element={<TripScreen />} />
         <Route path="/trip/:id/add" element={<AddExpenseScreen />} />
+        {/* 修改跟新增共用同一個畫面：欄位完全一樣，分兩份遲早會改一邊忘一邊。 */}
+        <Route path="/trip/:id/edit/:expenseId" element={<AddExpenseScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>

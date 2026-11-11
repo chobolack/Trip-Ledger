@@ -21,8 +21,22 @@ import {
   type TripStatus,
 } from '../domain/types';
 
+/**
+ * 產生一個 UUID v4 當主鍵。
+ *
+ * `crypto.randomUUID` 只在「安全環境」（HTTPS 或 localhost）才存在。
+ * 正式站是 HTTPS 所以沒事，但開發時用手機連 `http://192.168.x.x:5173`
+ * 就不是安全環境，這個函式會整個不見，建存檔與記帳都會炸
+ * （2026-11-11 實際踩到）。`crypto.getRandomValues` 沒有這個限制，
+ * 所以退回用它自己組一個——亂數來源一樣，產出的格式也一樣。
+ */
 export function newId(): string {
-  return crypto.randomUUID();
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40; // 版本 4
+  b[8] = (b[8] & 0x3f) | 0x80; // RFC 4122 變體
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 export function now(): string {
@@ -127,6 +141,7 @@ export async function sealTrip(
   const frozen = trip.sealRate !== null;
   return updateTrip(id, {
     status: 'archived',
+    revising: false,
     endedOn: await lastSpentOn(trip),
     ...(frozen
       ? {}
@@ -154,12 +169,42 @@ async function lastSpentOn(trip: Trip): Promise<string> {
 /**
  * 解除封存，讓存檔重新可寫。刻意做成明確動作，不是隨手就能編輯。
  *
+ * **畫面上已經沒有入口**（使用者 2026-11-11 拿掉，改用修訂模式 `beginRevision`）。
+ * 函式留著是因為既有資料裡可能還有「解封過、帶著凍結匯率的進行中存檔」，
+ * 下面關於匯率的說明對那些存檔仍然成立。
+ *
  * **凍結的匯率留著不清。** 那是這趟旅程當時的實際換匯成本，
  * 不會因為回頭補一筆帳就改變；清掉的話重新封存會抓到今天的匯率，
  * 整趟金額就跟使用者原本的紀錄對不上了。
  */
 export async function unsealTrip(id: string): Promise<Trip> {
-  return updateTrip(id, { status: 'active', endedOn: null });
+  return updateTrip(id, { status: 'active', endedOn: null, revising: false });
+}
+
+/**
+ * 進入修訂模式：存檔仍是已封存，只是明細暫時可以改。
+ *
+ * 給「回頭修幾筆舊帳」用的。跟 `unsealTrip` 的差別是這裡什麼都不重置——
+ * 狀態、結束日、匯率原封不動。見 `Trip.revising`。
+ */
+export async function beginRevision(id: string): Promise<Trip> {
+  const trip = await getTrip(id);
+  if (!trip) throw new Error(`存檔不存在：${id}`);
+  if (trip.status !== 'archived') throw new Error('只有已封存的存檔才需要修訂模式。');
+  return updateTrip(id, { revising: true });
+}
+
+/**
+ * 結束修訂，回到唯讀。
+ *
+ * 結束日照封存時同一條規則重算一次（最後一筆花費的日期）——
+ * 修訂中補了一筆更晚的帳、或刪掉了最後一天的帳，結束日都該跟著動，
+ * 否則同一個存檔「封存」跟「修訂後」會算出不同的結束日。
+ */
+export async function endRevision(id: string): Promise<Trip> {
+  const trip = await getTrip(id);
+  if (!trip) throw new Error(`存檔不存在：${id}`);
+  return updateTrip(id, { revising: false, endedOn: await lastSpentOn(trip) });
 }
 
 /**
@@ -219,6 +264,35 @@ export async function addExpense(input: NewExpenseInput): Promise<Expense> {
   const db = await getDb();
   await db.put('expenses', expense);
   return expense;
+}
+
+export async function getExpense(id: string): Promise<Expense | undefined> {
+  const db = await getDb();
+  const e = await db.get('expenses', id);
+  return e && e.deletedAt === null ? e : undefined;
+}
+
+/** 可以改的欄位。`tripId` 不在裡面——把一筆帳搬到別的存檔不是「修改」。 */
+export type ExpensePatch = Partial<
+  Pick<
+    Expense,
+    'spentOn' | 'category' | 'title' | 'paymentMethod' | 'amountKind' | 'cardRegion' | 'amount' | 'note'
+  >
+>;
+
+/**
+ * 修改一筆花費。
+ *
+ * `id` 與 `createdAt` 不變，所以它在當天明細裡的位置不會跳；
+ * `updatedAt` 會更新，合併匯入時這筆才會贏過備份檔裡的舊版本。
+ */
+export async function updateExpense(id: string, patch: ExpensePatch): Promise<Expense> {
+  const db = await getDb();
+  const current = await db.get('expenses', id);
+  if (!current || current.deletedAt !== null) throw new Error('這筆紀錄不存在，可能已經被刪除。');
+  const next: Expense = { ...current, ...patch, updatedAt: now() };
+  await db.put('expenses', next);
+  return next;
 }
 
 /** 刪除一筆花費，真的從資料庫移除。沒有復原的路。 */
