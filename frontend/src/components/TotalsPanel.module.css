@@ -41,7 +41,9 @@
 
 .big {
   font-family: var(--f-mono);
-  font-size: 27px;
+  /* 等寬數字很佔寬度，窄畫面「JPY 76,980 ≈ NT$ 15,633」這種一行會爆掉。
+     上限是原本的 27px，寬畫面不變。 */
+  font-size: clamp(21px, 6vw, 27px);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -95,7 +97,8 @@
 
 .grandValue {
   font-family: var(--f-mono);
-  font-size: 24px;
+  /* 跟著 .big 一起縮，不然完整總額會在窄畫面反客為主。 */
+  font-size: clamp(19px, 5.4vw, 24px);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: var(--ac);

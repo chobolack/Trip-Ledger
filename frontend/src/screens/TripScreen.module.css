@@ -23,41 +23,52 @@
 /**
  * 名稱那一列：左邊旅程名，右邊存檔層級的動作。
  *
- * `align-items: baseline` 會被按鈕的高度拉歪，所以用 flex-end 讓按鈕
- * 跟名稱的底線對齊。窄畫面時整組按鈕換到下一行並靠左，不要硬擠。
+ * **這一列不換行**（沒有 flex-wrap）。換行過，結果是名稱一長按鈕就整組掉到
+ * 下一行並靠左——`justify-content: space-between` 對單獨一行的項目沒有作用。
+ * 於是短名稱與長名稱長出兩種完全不同的版面，看起來像壞掉。
+ * 現在改成按鈕永遠固定在右上，容不下的是名稱，由它自己折行。
+ *
+ * `align-items: flex-start` 讓按鈕對齊名稱第一行的頂端，名稱折成幾行
+ * 都不會讓按鈕的位置跟著跑。
  */
 .nameRow {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--sp-2) var(--sp-3);
+  align-items: flex-start;
+  gap: var(--sp-3);
   margin: var(--sp-1) 0 var(--sp-3);
 }
 
 .name {
   /* 間距交給 .nameRow，這裡清掉才不會多一截。 */
   margin: 0;
-  /* 名稱長的時候優先讓它佔位，按鈕被擠到下一行。 */
+  /* 剩下的寬度都給名稱；min-width: 0 才允許它縮到比內容窄並折行。 */
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 24px;
+  /* 窄畫面縮小，讓名稱跟右邊兩顆按鈕擠得進同一行。
+     上限就是原本的 24px，所以寬畫面看起來沒變。 */
+  font-size: clamp(18px, 5.5vw, 24px);
   font-weight: 700;
   letter-spacing: 0.04em;
+  /* 沒有空白可斷的長名稱（例如一串英數）也要能折，否則會撐破卡片。 */
+  overflow-wrap: anywhere;
 }
 
+/* 按鈕組寬度固定，不被名稱擠壓也不換行——兩顆永遠並排在同一行。 */
 .headActions {
   display: flex;
   flex: none;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--sp-2);
 }
 
 /* 抬頭裡的按鈕比頁面主要動作小一號——它們是次要操作，不該搶走名稱的分量。 */
 .headBtn {
-  padding: 7px 12px;
-  font-size: 12px;
+  /* 窄畫面連內距一起收，省下來的寬度都還給名稱。 */
+  padding: clamp(5px, 1.6vw, 7px) clamp(8px, 3vw, 12px);
+  font-size: clamp(11px, 3vw, 12px);
   letter-spacing: 0.06em;
+  /* 字不准折，「解除封存」被折成兩行比什麼都醜。 */
+  white-space: nowrap;
 }
 
 /* 讀數格：標籤在上、數值在下，等寬對齊。 */
