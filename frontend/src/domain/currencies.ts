@@ -1,8 +1,12 @@
 /**
  * 可選的幣別。
  *
- * 使用者 2026-11-09 指定先放這五種，之後要加就往 `CURRENCIES` 補一筆，
- * 畫面會自動跟著長出選項——不要在各畫面各自寫死幣別清單。
+ * 台幣固定排第一，其後照全球外匯交易量的排名排到澳幣
+ *（使用者 2026-11-12 指定；原本是 2026-11-09 定的五種）。
+ * 之後要加就往 `CURRENCIES` 補一筆，畫面會自動跟著長出選項——
+ * 不要在各畫面各自寫死幣別清單。
+ *
+ * 這個陣列的順序就是下拉選單的順序。預設選中的是 `DEFAULT_CURRENCY`，跟排第幾無關。
  */
 export interface Currency {
   /** ISO 4217 代碼，資料庫存這個。 */
@@ -13,10 +17,12 @@ export interface Currency {
 
 export const CURRENCIES: readonly Currency[] = [
   { code: 'TWD', name: '台幣' },
-  { code: 'JPY', name: '日圓' },
-  { code: 'USD', name: '美金' },
+  { code: 'USD', name: '美元' },
   { code: 'EUR', name: '歐元' },
+  { code: 'JPY', name: '日圓' },
+  { code: 'GBP', name: '英鎊' },
   { code: 'CNY', name: '人民幣' },
+  { code: 'AUD', name: '澳幣' },
 ] as const;
 
 /** 新存檔的預設幣別。旅費記帳以出國為主，預設日圓。 */

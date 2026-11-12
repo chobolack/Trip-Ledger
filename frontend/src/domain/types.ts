@@ -40,6 +40,23 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
  * 只有使用者知道差別，所以讓他在記帳當下就選定，而不是事後靠日期猜。
  * 見 docs/規格.md〈刷卡手續費〉。
  */
+/**
+ * 這趟旅程記帳時可以選的付款方式。
+ *
+ * **西瓜卡只在日圓的旅程出現**（使用者 2026-11-12 指定）——那是日本的交通卡，
+ * 去別的國家選單裡多這一顆只是雜訊。
+ *
+ * `keep` 是「就算不符合條件也要留著」的那一個，給修改既有紀錄用：
+ * 舊資料或匯入的備份裡，可能有非日圓旅程卻記成西瓜卡的帳。
+ * 修改那筆時選單裡要找得到它目前的值，否則畫面上會變成什麼都沒選，
+ * 存檔時付款方式卻還是西瓜卡。
+ *
+ * 只影響記帳畫面的選單。統計圖表、明細、匯入驗證看的仍是完整的 `PAYMENT_METHODS`。
+ */
+export function paymentMethodsFor(currency: string, keep?: PaymentMethod): PaymentMethod[] {
+  return PAYMENT_METHODS.filter((m) => m !== '西瓜卡' || currency === 'JPY' || m === keep);
+}
+
 /** 已封存、但暫時開放改明細。見 `Trip.revising`。 */
 export function isRevising(trip: { status: TripStatus; revising?: boolean }): boolean {
   return trip.status === 'archived' && trip.revising === true;

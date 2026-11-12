@@ -11,7 +11,7 @@ import {
   CATEGORIES,
   DEFAULT_AMOUNT_KIND,
   DEFAULT_CARD_REGION,
-  PAYMENT_METHODS,
+  paymentMethodsFor,
   isRevising,
   isWritable,
   type AmountKind,
@@ -297,7 +297,7 @@ export function AddExpenseScreen() {
             {!domestic && <span className="fieldHint">刷卡與轉帳預設台幣，現金預設外幣</span>}
           </div>
           <div className="chips">
-            {PAYMENT_METHODS.map((m) => (
+            {paymentMethodsFor(trip.currency, method).map((m) => (
               <button
                 key={m}
                 type="button"
