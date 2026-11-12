@@ -1,3 +1,4 @@
+import { useInView } from '../hooks/useInView';
 import { fmtTwd, paymentBreakdown } from '../domain/money';
 import type { Expense, PaymentMethod, Trip } from '../domain/types';
 import s from './PaymentBars.module.css';
@@ -23,6 +24,8 @@ interface Props {
  */
 export function PaymentBars({ trip, expenses, selected, onSelect }: Props) {
   const rows = paymentBreakdown(trip, expenses);
+  /* 捲到看得見才開始長，不是一進頁面就播——長條在頁面更下方，見 useInView。 */
+  const [rowsRef, rowsSeen] = useInView<HTMLDivElement>(0.3);
 
   // 卡片外框與「算不算得出來」的提示都由 StatsPanel 統一處理，
   // 這兩個分支只是防手滑單獨使用時爆掉。
@@ -30,8 +33,8 @@ export function PaymentBars({ trip, expenses, selected, onSelect }: Props) {
   if (rows.length === 0) return <p className={s.note}>沒有花費紀錄。</p>;
 
   return (
-    <div className={s.rows}>
-      {rows.map((r) => (
+    <div className={s.rows} ref={rowsRef}>
+      {rows.map((r, i) => (
         <button
           key={r.method}
           type="button"
@@ -46,7 +49,11 @@ export function PaymentBars({ trip, expenses, selected, onSelect }: Props) {
             </span>
           </span>
           <span className={s.track}>
-            <span className={s.fill} style={{ width: `${(r.share * 100).toFixed(2)}%` }} />
+            {/* 進場時從左邊長出來，一條接一條（使用者 2026-11-12 指定）。 */}
+            <span
+              className={`${s.fill} ${rowsSeen ? s.fillOn : ''}`}
+              style={{ width: `${(r.share * 100).toFixed(2)}%`, animationDelay: `${i * 90}ms` }}
+            />
           </span>
         </button>
       ))}

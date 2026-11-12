@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ExpenseList } from '../components/ExpenseList';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { SealResult } from '../components/SealResult';
 import { StatsPanel } from '../components/StatsPanel';
 import { TotalsPanel } from '../components/TotalsPanel';
 import { fetchRateToTwd } from '../data/rates';
@@ -17,6 +18,7 @@ import {
   today,
   updateTrip,
 } from '../data/repo';
+import { prefersReducedMotion } from '../hooks/useCountUp';
 import { NARROW, useMediaQuery } from '../hooks/useMediaQuery';
 import { currencyLabel } from '../domain/currencies';
 import { tripTotals } from '../domain/money';
@@ -33,6 +35,9 @@ export function TripScreen() {
   /* 封存也是兩段式確認。封存後沒有「變回進行中」的路（使用者 2026-11-11 拿掉了
      解除封存），所以誤觸要在這裡擋，不是事後救。 */
   const [sealArmed, setSealArmed] = useState(false);
+  /* 結算演出只在「剛按下封存」那一次播。是畫面上的暫時狀態，不存進資料——
+     之後再打開這個存檔就直接是結算畫面。 */
+  const [showResult, setShowResult] = useState(false);
   /* 點圓餅切片選的分類、點長條選的付款方式。只影響下方明細，
      圖表本身永遠顯示完整占比——否則點一下圖就只剩一片，沒得比了。
 
@@ -120,6 +125,7 @@ export function TripScreen() {
     await sealTrip(trip!.id, rate);
     await load();
     setBusy(null);
+    if (!prefersReducedMotion()) setShowResult(true);
   }
 
   async function onRetryRate() {
@@ -224,6 +230,14 @@ export function TripScreen() {
         sub={revising ? 'Revising' : sealed ? 'Result' : 'In Progress'}
         backTo="/saves"
       />
+      {showResult && sealed && (
+        <SealResult
+          trip={trip}
+          totals={totals}
+          dayCount={dayCount}
+          onDone={() => setShowResult(false)}
+        />
+      )}
       <div className={s.body}>
         <div className={`${s.head} ${sealed ? s.sealedHead : ''}`}>
           <span className="hudLabel">

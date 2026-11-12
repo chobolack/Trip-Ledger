@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { addExpense, getExpense, getTrip, today, updateExpense } from '../data/repo';
 import { currencyName } from '../domain/currencies';
+import { prefersReducedMotion } from '../hooks/useCountUp';
 import { fmt, isDomestic } from '../domain/money';
 import {
   CARD_REGIONS,
@@ -53,6 +54,9 @@ export function AddExpenseScreen() {
   const [spentOn, setSpentOn] = useState(today());
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
+  /* 記帳成功時從金額框飄上去的那個數字。id 每次不同，
+     連續記兩筆一樣的金額時動畫才會重播。 */
+  const [floater, setFloater] = useState<{ id: number; text: string } | null>(null);
 
   /* 修改模式：要改的那筆找不到（被刪了、或網址的存檔對不上）。 */
   const [missing, setMissing] = useState(false);
@@ -196,6 +200,16 @@ export function AddExpenseScreen() {
       );
       setAmount('');
       setTitle('');
+      /* 手感回饋：金額像遊戲扣錢那樣飄上去，加一下短震動（使用者 2026-11-12 指定）。
+         純演出——上面那行文字才是正式的成功訊息，這裡壞了也不影響記帳。
+         震動只有 Android 有；iOS 的瀏覽器不提供這個 API，會直接略過。 */
+      if (!prefersReducedMotion()) {
+        setFloater({
+          id: Date.now(),
+          text: `−${effectiveKind === 'twd' ? 'NT$' : trip!.currency} ${fmt(value)}`,
+        });
+      }
+      navigator.vibrate?.(15);
     } catch (e) {
       setError(e instanceof Error ? `寫入失敗：${e.message}` : '寫入失敗。');
     }
@@ -265,6 +279,16 @@ export function AddExpenseScreen() {
             />
           </div>
           <p className="fieldHint">{unit}</p>
+          {floater && (
+            <span
+              key={floater.id}
+              className={s.floater}
+              aria-hidden
+              onAnimationEnd={() => setFloater(null)}
+            >
+              {floater.text}
+            </span>
+          )}
         </div>
 
         <div className={s.group}>

@@ -158,3 +158,39 @@
   font-size: 13px;
   color: var(--fg-dim);
 }
+
+/* ─── 進場動畫 ─────────────────────────────────────────────────── */
+
+/**
+ * 圓餅的掃開遮罩，見 CategoryPie.tsx。
+ *
+ * 283 ＝ 半徑 45 的圓周長（2π × 45 ≈ 282.7）。虛線偏移從一整圈退到 0，
+ * 描邊就從無到有繞一圈。先轉 -90 度，起點才會在 12 點鐘方向——
+ * 跟切片排列的起點一致。
+ */
+/* 還沒捲到之前：遮罩全關，圓餅是空的，等著被掃出來。 */
+.reveal {
+  stroke-dasharray: 283;
+  stroke-dashoffset: 283;
+  transform: rotate(-90deg);
+  transform-origin: 90px 90px;
+}
+
+/* 捲進畫面後由元件加上，只會加一次。 */
+.revealOn {
+  animation: pieSweep 750ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+
+@keyframes pieSweep {
+  from { stroke-dashoffset: 283; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* 減少動態效果：不等捲動、不演，圓餅一開始就完整顯示。 */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .revealOn {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+}

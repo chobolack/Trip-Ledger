@@ -86,6 +86,29 @@
   background: var(--ac);
   /* 1% 的項目換算成像素可能不到一格，留個最小寬度才看得見。 */
   min-width: 3px;
+  /* 進場：從基準線（左）長出來。動 transform 而不是 width，不會觸發重排。 */
+  transform-origin: left;
+  /* 還沒捲到之前先縮到 0，等著長出來。 */
+  transform: scaleX(0);
+}
+
+/* 捲進畫面後由元件加上，只會加一次。 */
+.fillOn {
+  animation: barGrow 600ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+
+@keyframes barGrow {
+  from { transform: scaleX(0); }
+  to   { transform: none; }
+}
+
+/* 減少動態效果：不等捲動、不演，長條一開始就是完整長度。 */
+@media (prefers-reduced-motion: reduce) {
+  .fill,
+  .fillOn {
+    transform: none;
+    animation: none;
+  }
 }
 
 .note {

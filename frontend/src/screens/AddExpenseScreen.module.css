@@ -135,3 +135,31 @@
   color: var(--ok);
   font-size: 13px;
 }
+
+/**
+ * 記帳成功時飄上去的金額。
+ *
+ * 絕對定位在金額框右下、不吃點擊，所以不會擋到正要輸入下一筆的手指，
+ * 也不會把版面撐開。飄完由元件從 DOM 拿掉。
+ */
+.floater {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  font-family: var(--f-mono);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ac);
+  text-shadow: 0 0 12px var(--ac-glow);
+  pointer-events: none;
+  animation: floatUp 900ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes floatUp {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.9); }
+  15%  { opacity: 1; transform: translateY(0) scale(1.08); }
+  30%  { transform: translateY(-6px) scale(1); }
+  100% { opacity: 0; transform: translateY(-46px); }
+}

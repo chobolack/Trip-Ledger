@@ -1,3 +1,4 @@
+import { CountUp } from './CountUp';
 import { currencyName } from '../domain/currencies';
 import { fmt, fmtTwd, isDomestic, type TripTotals } from '../domain/money';
 import type { Trip } from '../domain/types';
@@ -34,7 +35,9 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
   const feeRow = cardFeeTwd > 0 && (
     <div className={s.grandRow}>
       <span className="hudLabel">刷卡手續費</span>
-      <span className={s.feeValue}>＋{fmtTwd(cardFeeTwd)}</span>
+      <span className={s.feeValue}>
+        ＋<CountUp value={cardFeeTwd} format={fmtTwd} />
+      </span>
     </div>
   );
 
@@ -46,7 +49,9 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
         <div className={s.block}>
           <span className="hudLabel">總花費</span>
           <div className={s.figure}>
-            <span className={`${s.big} ${s.twd}`}>{fmtTwd(twdConfirmed)}</span>
+            <span className={`${s.big} ${s.twd}`}>
+            <CountUp value={twdConfirmed} format={fmtTwd} />
+          </span>
           </div>
         </div>
         {cardFeeTwd > 0 && (
@@ -54,7 +59,9 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
             {feeRow}
             <div className={s.grandRow}>
               <span className="hudLabel">完整總額</span>
-              <span className={s.grandValue}>{fmtTwd(twdConfirmed + cardFeeTwd)}</span>
+              <span className={s.grandValue}>
+                <CountUp value={twdConfirmed + cardFeeTwd} format={fmtTwd} />
+              </span>
             </div>
           </div>
         )}
@@ -69,7 +76,9 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
       <div className={s.block}>
         <span className="hudLabel">確定台幣花費</span>
         <div className={s.figure}>
-          <span className={`${s.big} ${s.twd}`}>{fmtTwd(twdConfirmed)}</span>
+          <span className={`${s.big} ${s.twd}`}>
+            <CountUp value={twdConfirmed} format={fmtTwd} />
+          </span>
         </div>
       </div>
 
@@ -81,10 +90,12 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
         <span className="hudLabel">{currencyName(trip.currency)}花費</span>
         <div className={s.figure}>
           <span className={`${s.big} ${s.foreign}`}>
-            {trip.currency} {fmt(foreignSpent)}
+            <CountUp value={foreignSpent} format={(n) => `${trip.currency} ${fmt(n)}`} />
           </span>
           {foreignAsTwd !== null && (
-            <span className={s.derived}>≈ {fmtTwd(foreignAsTwd)}</span>
+            <span className={s.derived}>
+              ≈ <CountUp value={foreignAsTwd} format={fmtTwd} />
+            </span>
           )}
         </div>
         <p className={s.note}>
@@ -102,7 +113,9 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
           {feeRow}
           <div className={s.grandRow}>
             <span className="hudLabel">完整總額</span>
-            <span className={s.grandValue}>{fmtTwd(grandTotalTwd)}</span>
+            <span className={s.grandValue}>
+              <CountUp value={grandTotalTwd} format={fmtTwd} />
+            </span>
           </div>
           {cardFeeUnknown > 0 && (
             <p className={s.note}>

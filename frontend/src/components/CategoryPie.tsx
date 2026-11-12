@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
+import { useInView } from '../hooks/useInView';
 import { categoryBreakdown, fmtTwd, type CategorySlice } from '../domain/money';
 import type { Category, Expense, Trip } from '../domain/types';
 import s from './CategoryPie.module.css';
@@ -53,6 +54,11 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
    * 點選要持續，因為下方明細跟著它篩選。
    */
   const [hovered, setHovered] = useState<Category | null>(null);
+  /* 進場動畫用的遮罩 id。一頁可能不只一張圓餅，id 不能寫死；
+     useId 產生的字串帶冒號，放進 url(#…) 有些瀏覽器不吃，所以拿掉。 */
+  const maskId = `pie-reveal-${useId().replace(/:/g, '')}`;
+  /* 捲到看得見才開始掃，不是一進頁面就播——圖表在頁面下方，見 useInView。 */
+  const [chartRef, chartSeen] = useInView<SVGSVGElement>(0.4);
   const slices = categoryBreakdown(trip, expenses);
 
   // 卡片外框與「算不算得出來」的提示都由 StatsPanel 統一處理，
@@ -102,6 +108,7 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
       <div className={s.wrap}>
         {showPie && (
           <svg
+            ref={chartRef}
             className={s.chart}
             width={SIZE}
             height={SIZE}
@@ -111,6 +118,24 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
               .map((x) => `${x.category} ${pct(x.share)}`)
               .join('，')}`}
           >
+            {/* 進場動畫：一個順時針掃開的遮罩，圓餅像雷達掃描那樣被畫出來
+                （使用者 2026-11-12 指定）。遮罩是一個半徑 45、線寬 90 的圓——
+                線寬剛好等於直徑，所以描邊實際上蓋滿整個圓盤，動它的虛線偏移
+                就等於轉動一個扇形。只動遮罩，不碰切片本身的幾何與互動。 */}
+            <defs>
+              <mask id={maskId}>
+                <circle
+                  className={`${s.reveal} ${chartSeen ? s.revealOn : ''}`}
+                  cx={C}
+                  cy={C}
+                  r={45}
+                  fill="none"
+                  stroke="white"
+                  strokeWidth={90}
+                />
+              </mask>
+            </defs>
+            <g mask={`url(#${maskId})`}>
             {arcs.map((a) => (
               <path
                 key={a.category}
@@ -132,6 +157,7 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
                 onClick={() => onSelect(selected === a.category ? null : a.category)}
               />
             ))}
+            </g>
           </svg>
         )}
 

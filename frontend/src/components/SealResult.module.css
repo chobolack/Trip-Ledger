@@ -1,0 +1,122 @@
+/* 蓋住整個畫面的結算演出。點任何地方都會關掉，所以整片都是可點的。 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+  background: rgb(2 5 10 / 92%);
+  cursor: pointer;
+  animation: fadeIn 200ms ease both;
+}
+
+.box {
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.kicker {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ac);
+  animation: fadeIn 300ms ease both;
+}
+
+/* 主標：從字距很寬收攏進來，像遊戲結算畫面的標題落定。 */
+.title {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--f-mono);
+  font-size: clamp(40px, 13vw, 56px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--fg);
+  text-shadow: 0 0 24px var(--ac-glow);
+  animation: titleIn 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.name {
+  margin: var(--sp-2) 0 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  color: var(--fg-dim);
+  animation: fadeIn 300ms ease 200ms both;
+}
+
+.rows {
+  margin: var(--sp-5) 0 0;
+  border-top: 1px solid var(--line-bright);
+}
+
+/* 一行一行從左邊滑進來。延遲由元件用 inline style 給，跟數字開始滾的時間對齊。 */
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-1);
+  border-bottom: 1px solid var(--line);
+  animation: rowIn 300ms ease both;
+}
+
+.rowGrand {
+  border-bottom-color: var(--ac-deep);
+  background: var(--ac-wash);
+}
+
+.value {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.grand {
+  font-size: clamp(21px, 6vw, 26px);
+  font-weight: 700;
+  color: var(--ac);
+}
+
+.foreign {
+  color: var(--ac);
+}
+
+.hint {
+  margin: var(--sp-5) 0 0;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--fg-faint);
+  /* 先淡入，之後一直閃——「按任意鍵繼續」的老規矩。 */
+  animation:
+    fadeIn 300ms ease both,
+    blink 1.4s ease-in-out 300ms infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes titleIn {
+  from { opacity: 0; letter-spacing: 0.6em; }
+  to   { opacity: 1; letter-spacing: 0.14em; }
+}
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
