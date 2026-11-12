@@ -22,7 +22,7 @@ import {
 import { prefersReducedMotion } from '../hooks/useCountUp';
 import { NARROW, useMediaQuery } from '../hooks/useMediaQuery';
 import { currencyLabel } from '../domain/currencies';
-import { tripTotals } from '../domain/money';
+import { isDomestic, tripTotals } from '../domain/money';
 import { isRevising, type Category, type Expense, type PaymentMethod, type Trip } from '../domain/types';
 import s from './TripScreen.module.css';
 
@@ -308,8 +308,9 @@ export function TripScreen() {
         )}
 
         {/* 海外刷卡手續費率。封存後唯讀——改它會動到已凍結的總額，
-            跟封存匯率同一條理由。要改就先進修訂模式。 */}
-        {writable && (
+            跟封存匯率同一條理由。要改就先進修訂模式。
+            整趟台幣的存檔沒有海外刷卡，這一格直接不出現。 */}
+        {writable && !isDomestic(trip) && (
           <label className={s.feePct}>
             <span className="hudLabel">海外刷卡手續費</span>
             <span className={s.feePctInput}>

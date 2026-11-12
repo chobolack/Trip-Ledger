@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useInView } from '../hooks/useInView';
 import { cardFeeTwd, fmt, fmtTwd, groupByDay, isDomestic } from '../domain/money';
 import { CARD_REGION_LABEL, type Expense, type Trip } from '../domain/types';
 import s from './ExpenseList.module.css';
@@ -16,6 +17,26 @@ interface Props {
 }
 
 const WEEKDAYS = '日一二三四五六';
+
+/**
+ * 同時進場的明細要一筆接一筆，不是整排一起滑——進頁面時畫面上那十來筆
+ * 會在同一瞬間被判定「看得到」，沒有錯開的話就只是整塊一起動。
+ *
+ * 做法是排隊：每筆的起跑時間至少比上一筆晚 `STEP` 毫秒。
+ * 捲動時一次只冒出一兩筆，隊伍是空的，所以幾乎沒有延遲。
+ * 上限 `MAX_WAIT` 是為了捲很快的時候不要讓後面的排太久——寧可幾筆一起進，
+ * 也不要手指都停了明細還在慢慢補。
+ */
+const STEP = 60;
+const MAX_WAIT = 400;
+let lastStart = 0;
+
+function queueDelay(): number {
+  const now = performance.now();
+  const at = Math.max(now, lastStart + STEP);
+  lastStart = at;
+  return Math.min(at - now, MAX_WAIT);
+}
 
 function dayLabel(date: string): string {
   const d = new Date(`${date}T00:00:00`);
@@ -84,6 +105,11 @@ function Row({
   onEdit: (id: string) => void;
 }) {
   const [armed, setArmed] = useState(false);
+  /* 捲到看得見才從左邊滑進來，而且只滑一次（使用者 2026-11-12 指定）。
+     延遲在「第一次被看見」的那次渲染決定一次就固定，之後重新渲染不會重排隊。 */
+  const [entryRef, seen] = useInView<HTMLDivElement>(0.15);
+  const [delay, setDelay] = useState<number | null>(null);
+  if (seen && delay === null) setDelay(queueDelay());
   // 整趟台幣的存檔不分幣別，一律當台幣顯示。
   const asTwd = expense.amountKind === 'twd' || isDomestic(trip);
   /* 手續費是加在商品金額之外的獨立一行，所以上面那個金額不動。
@@ -98,7 +124,10 @@ function Row({
             不顯示的話使用者只會看到有的有子行有的沒有，猜不出為什麼。 */}
         <span className={s.tags}>
           {expense.category} · {expense.paymentMethod}
-          {expense.paymentMethod === '刷卡' && `（${CARD_REGION_LABEL[expense.cardRegion]}）`}
+          {/* 整趟台幣的存檔全都是國內刷卡，沒有東西要區分，不標。 */}
+          {expense.paymentMethod === '刷卡' &&
+            !isDomestic(trip) &&
+            `（${CARD_REGION_LABEL[expense.cardRegion]}）`}
         </span>
       </span>
       <span className={`${s.amount} ${asTwd ? '' : s.amountForeign}`}>
@@ -108,7 +137,11 @@ function Row({
   );
 
   return (
-    <div className={s.entry}>
+    <div
+      ref={entryRef}
+      className={`${s.entry} ${delay !== null ? s.entryIn : ''}`}
+      style={delay ? { animationDelay: `${Math.round(delay)}ms` } : undefined}
+    >
       <div className={s.row}>
         {/* 可寫時整列（刪除鈕除外）是一顆按鈕，點了去修改。
             刪除鈕不能包在裡面——按鈕裡不能再放按鈕，而且兩個動作要分得開。 */}

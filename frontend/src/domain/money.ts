@@ -61,6 +61,9 @@ export function isDomestic(trip: Trip): boolean {
  * 這筆的海外刷卡手續費（台幣，已四捨五入）。
  *
  * 不是刷卡、刷在國內、或這趟的費率是 0 → 回傳 0。
+ * 整趟台幣的存檔（國內旅行）也一律是 0，不看那筆記的地區——
+ * 國內旅行沒有海外刷卡這回事（使用者 2026-11-12 指定），記帳畫面也不給選；
+ * 在這裡擋，才連這條規則之前就記下、地區還留著預設「海外」的舊紀錄一起涵蓋。
  * 該收費但算不出來（用外幣計價又還沒有匯率）→ 回傳 null，由呼叫端決定怎麼講。
  *
  * **只認使用者記下來的地區，不靠日期或幣別猜。** 出發前在台灣刷的機票跟
@@ -69,10 +72,11 @@ export function isDomestic(trip: Trip): boolean {
  */
 export function cardFeeTwd(trip: Trip, e: Expense): number | null {
   if (e.paymentMethod !== '刷卡' || e.cardRegion !== 'overseas' || trip.cardFeePct <= 0) return 0;
+  if (isDomestic(trip)) return 0;
 
   const rate = trip.sealRate;
   const base =
-    e.amountKind === 'twd' || isDomestic(trip)
+    e.amountKind === 'twd'
       ? e.amount
       : rate !== null && rate > 0
         ? e.amount * rate

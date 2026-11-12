@@ -32,6 +32,11 @@ function point(angle: number): [number, number] {
 }
 
 function slicePath(from: number, to: number): string {
+  /* 整圈（只有一個分類，占 100%）要另外畫：起點跟終點是同一個點，
+     SVG 的弧線指令遇到這種情況會直接不畫。拆成兩個半圓接起來。 */
+  if (to - from >= Math.PI * 2 - 1e-6) {
+    return `M ${C} ${C - R} A ${R} ${R} 0 1 1 ${C} ${C + R} A ${R} ${R} 0 1 1 ${C} ${C - R} Z`;
+  }
   const [x1, y1] = point(from);
   const [x2, y2] = point(to);
   const largeArc = to - from > Math.PI ? 1 : 0;
@@ -71,8 +76,8 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
   const focus = hovered ?? selected;
   const current = slices.find((x) => x.category === focus) ?? null;
 
-  // 只有一兩類時圓餅沒有比較的意義，直接給數字（兩片的圓餅是反模式）。
-  const showPie = slices.length > 2;
+  /* 不管幾類都畫圓餅，只有一類就是一個 100% 的整圓（使用者 2026-11-12 指定）。
+     原本一兩類時不畫、只給數字，結果看起來像圖表壞掉了。 */
 
   // 累加角度。slices 已經由 categoryBreakdown 依金額由大到小排好，
   // 圓餅與圖例共用同一份陣列，順序與配色保證一致。
@@ -98,15 +103,13 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
             {/* 旁邊那個總計是商品金額，比總計區的「完整總額」少了刷卡手續費。
                 兩個數字擺在同一頁相差一截卻沒說明，看起來就像漏算了。
                 只在沒有選中切片時顯示——選中時這一行要讓位給該類的數字。 */}
-            <span className={s.readoutHint}>
-              {showPie ? '圓餅圖不含手續費' : '不含手續費'}
-            </span>
+            <span className={s.readoutHint}>圓餅圖不含手續費</span>
           </>
         )}
       </div>
 
       <div className={s.wrap}>
-        {showPie && (
+        {
           <svg
             ref={chartRef}
             className={s.chart}
@@ -159,7 +162,7 @@ export function CategoryPie({ trip, expenses, selected, onSelect }: Props) {
             ))}
             </g>
           </svg>
-        )}
+        }
 
         <div className={s.legend}>
           {slices.map((x, i) => (

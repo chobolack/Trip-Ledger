@@ -156,6 +156,9 @@ export function AddExpenseScreen() {
   // 整趟台幣的存檔沒有外幣可選，幣別切換直接不出現。
   const domestic = isDomestic(trip);
   const effectiveKind: AmountKind = domestic ? 'twd' : kind;
+  /* 國內旅行沒有海外刷卡（使用者 2026-11-12 指定）：切換鈕不出現，
+     存的時候一律記國內——跟上面幣別的處理是同一個做法。 */
+  const effectiveRegion: CardRegion = domestic ? 'domestic' : region;
   const unit = effectiveKind === 'twd' ? 'TWD 台幣' : `${trip.currency} ${currencyName(trip.currency)}`;
 
   async function submit() {
@@ -175,7 +178,7 @@ export function AddExpenseScreen() {
           title: title.trim(),
           paymentMethod: method,
           amountKind: effectiveKind,
-          cardRegion: region,
+          cardRegion: effectiveRegion,
           amount: value,
         });
         // 改完就回明細，不像新增那樣留在表單——沒有「接著改下一筆」這回事。
@@ -231,7 +234,7 @@ export function AddExpenseScreen() {
                 手指正要按的東西突然跑掉（使用者 2026-11-12 指定）。 */}
             {/* 只有刷卡看得到：決定這筆要不要算國外交易手續費。
                 其他付款方式沒有這個問題，顯示出來只會讓人以為要選。 */}
-            {method === '刷卡' && (
+            {method === '刷卡' && !domestic && (
               <div className={s.kindSwitch}>
                 {CARD_REGIONS.map((r) => (
                   <button
