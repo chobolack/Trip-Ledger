@@ -1,0 +1,82 @@
+/* 蓋滿整個視窗、固定不動，跟 base.css 的格線底圖對齊。
+   z-index 跟格線一樣是 -1，但在 DOM 裡排在它後面，所以畫在格線上、內容下。 */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/**
+ * 一道電流：一小段漸層線，頭亮尾淡。
+ *
+ * 長度、亮度都收斂——這是背景，眼角瞄到就好，不該搶走數字的注意力。
+ * 要更明顯就調 --len（長度）與 opacity。
+ */
+.pulse {
+  --len: 150px;
+  position: absolute;
+  opacity: 0.75;
+  filter: drop-shadow(0 0 4px var(--ac-glow));
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  will-change: transform;
+}
+
+/* 橫向：1px 高，壓在水平格線上。 */
+.right,
+.left {
+  left: 0;
+  width: var(--len);
+  height: 1px;
+}
+
+.right {
+  background: linear-gradient(90deg, transparent, var(--ac));
+  animation-name: runRight;
+}
+
+.left {
+  background: linear-gradient(270deg, transparent, var(--ac));
+  animation-name: runLeft;
+}
+
+/* 縱向：1px 寬，壓在垂直格線上。 */
+.down,
+.up {
+  top: 0;
+  width: 1px;
+  height: var(--len);
+}
+
+.down {
+  background: linear-gradient(180deg, transparent, var(--ac));
+  animation-name: runDown;
+}
+
+.up {
+  background: linear-gradient(0deg, transparent, var(--ac));
+  animation-name: runUp;
+}
+
+/* 從畫面外進來、走到另一側畫面外，所以起訖都多推一個自身長度。 */
+@keyframes runRight {
+  from { transform: translateX(calc(-1 * var(--len))); }
+  to   { transform: translateX(100vw); }
+}
+
+@keyframes runLeft {
+  from { transform: translateX(100vw); }
+  to   { transform: translateX(calc(-1 * var(--len))); }
+}
+
+@keyframes runDown {
+  from { transform: translateY(calc(-1 * var(--len))); }
+  to   { transform: translateY(100vh); }
+}
+
+@keyframes runUp {
+  from { transform: translateY(100vh); }
+  to   { transform: translateY(calc(-1 * var(--len))); }
+}

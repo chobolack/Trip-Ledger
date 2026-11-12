@@ -48,7 +48,6 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
           <div className={s.figure}>
             <span className={`${s.big} ${s.twd}`}>{fmtTwd(twdConfirmed)}</span>
           </div>
-          <p className={s.note}>整趟都是台幣，不需要換算</p>
         </div>
         {cardFeeTwd > 0 && (
           <div className={s.grand}>
@@ -72,7 +71,6 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
         <div className={s.figure}>
           <span className={`${s.big} ${s.twd}`}>{fmtTwd(twdConfirmed)}</span>
         </div>
-        <p className={s.note}>以台幣計價的紀錄，不需要換算</p>
       </div>
 
       <div className={s.block}>

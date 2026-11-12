@@ -7,7 +7,7 @@ import { isRevising } from '../domain/types';
 import s from './SaveSlotsScreen.module.css';
 
 /**
- * 存檔列表。進行中可讀寫並置頂；已封存是唯讀成績單。
+ * 存檔列表。進行中可讀寫並置頂；已封存是唯讀結算畫面。
  *
  * 列表只顯示筆數與天數，金額留到存檔內頁。
  * 原因是花費有「確定台幣」與「外幣現金」兩個不相加的數字
@@ -71,10 +71,11 @@ function Slot({ summary, index }: { summary: TripSummary; index: number }) {
       className={`${s.slot} ${sealed ? s.sealed : ''}`}
       onClick={() => nav(`/trip/${trip.id}`)}
     >
+      <span className={s.frame} aria-hidden />
       <span className={s.slotTop}>
         <span className="hudLabel">SLOT {String(index + 1).padStart(2, '0')}</span>
         <span className={`${s.badge} ${sealed ? s.badgeSealed : s.badgeActive}`}>
-          {isRevising(trip) ? '修訂中' : sealed ? '唯讀' : '進行中'}
+          {isRevising(trip) ? '修訂中' : sealed ? '已封存' : '進行中'}
         </span>
       </span>
       <span className={s.name}>{trip.name}</span>

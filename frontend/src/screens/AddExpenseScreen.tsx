@@ -98,7 +98,10 @@ export function AddExpenseScreen() {
    */
   function pickMethod(m: PaymentMethod) {
     setMethod(m);
-    setKind(DEFAULT_AMOUNT_KIND[m]);
+    /* 修改既有紀錄時不跳：那筆的幣別是使用者當初確認過的，
+       只是想改個付款方式，幣別卻跟著無聲變掉，金額的意義就整個錯了
+       （3,000 日圓變成 3,000 台幣）。要改幣別就自己按。 */
+    if (!editing) setKind(DEFAULT_AMOUNT_KIND[m]);
   }
 
   if (trip === undefined) {
@@ -124,10 +127,10 @@ export function AddExpenseScreen() {
   if (!isWritable(trip)) {
     return (
       <>
-        <ScreenHeader title="唯讀存檔" sub="Sealed" backTo={`/trip/${trip.id}`} />
+        <ScreenHeader title="結算畫面" sub="Result" backTo={`/trip/${trip.id}`} />
         <div className={s.body}>
           <p className="errorText">
-            這個存檔已經封存，是唯讀的成績單。要{editing ? '修改紀錄' : '補記帳'}
+            這個存檔已經封存結算。要{editing ? '修改紀錄' : '補記帳'}
             請先回上一頁按「修改紀錄」。
           </p>
         </div>
@@ -209,6 +212,25 @@ export function AddExpenseScreen() {
         <div className={s.amountBox}>
           <span className="hudLabel">金額</span>
           <div className={s.switches}>
+            {/* 地區排在幣別「前面」：這一組靠右對齊，所以排前面的會從左邊長出來，
+                幣別鈕留在最右邊原地不動。反過來排的話，選刷卡時幣別鈕會被往左推，
+                手指正要按的東西突然跑掉（使用者 2026-11-12 指定）。 */}
+            {/* 只有刷卡看得到：決定這筆要不要算國外交易手續費。
+                其他付款方式沒有這個問題，顯示出來只會讓人以為要選。 */}
+            {method === '刷卡' && (
+              <div className={s.kindSwitch}>
+                {CARD_REGIONS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`${s.kindBtn} ${region === r ? s.kindBtnOn : ''}`}
+                    onClick={() => setRegion(r)}
+                  >
+                    {CARD_REGION_LABEL[r]}
+                  </button>
+                ))}
+              </div>
+            )}
             {!domestic && (
               <div className={s.kindSwitch}>
                 <button
@@ -225,22 +247,6 @@ export function AddExpenseScreen() {
                 >
                   TWD
                 </button>
-              </div>
-            )}
-            {/* 只有刷卡看得到：決定這筆要不要算國外交易手續費。
-                其他付款方式沒有這個問題，顯示出來只會讓人以為要選。 */}
-            {method === '刷卡' && (
-              <div className={s.kindSwitch}>
-                {CARD_REGIONS.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className={`${s.kindBtn} ${region === r ? s.kindBtnOn : ''}`}
-                    onClick={() => setRegion(r)}
-                  >
-                    {CARD_REGION_LABEL[r]}
-                  </button>
-                ))}
               </div>
             )}
           </div>

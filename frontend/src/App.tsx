@@ -1,4 +1,5 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { GridPulses } from './components/GridPulses';
 import { AddExpenseScreen } from './screens/AddExpenseScreen';
 import { DataScreen } from './screens/DataScreen';
 import { NewSaveScreen } from './screens/NewSaveScreen';
@@ -17,6 +18,7 @@ import { TripScreen } from './screens/TripScreen';
 export function App() {
   return (
     <HashRouter>
+      <GridPulses />
       <Routes>
         <Route path="/" element={<TitleScreen />} />
         <Route path="/new" element={<NewSaveScreen />} />

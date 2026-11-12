@@ -97,7 +97,7 @@ export function TripScreen() {
   /**
    * 封存：抓一次當日匯率凍結起來，把現金換算成台幣。
    *
-   * 抓不到匯率**不會阻止封存**——標記待補，之後在成績單上按「現在抓匯率」補。
+   * 抓不到匯率**不會阻止封存**——標記待補，之後在結算畫面上按「現在抓匯率」補。
    * 這個 App 是離線優先的，不能因為沒網路就不准結束旅程。
    */
   async function onSeal() {
@@ -220,8 +220,8 @@ export function TripScreen() {
   return (
     <>
       <ScreenHeader
-        title={revising ? '修訂中' : sealed ? '唯讀成績單' : '存檔'}
-        sub={revising ? 'Revising' : sealed ? 'Sealed' : 'In Progress'}
+        title={revising ? '修訂中' : sealed ? '結算畫面' : '存檔'}
+        sub={revising ? 'Revising' : sealed ? 'Result' : 'In Progress'}
         backTo="/saves"
       />
       <div className={s.body}>
@@ -298,7 +298,6 @@ export function TripScreen() {
               />
               <span className={s.feePctUnit}>%</span>
             </span>
-            <span className="fieldHint">多數信用卡的國外交易手續費是 1.5%。只影響「海外刷卡」的紀錄</span>
           </label>
         )}
 

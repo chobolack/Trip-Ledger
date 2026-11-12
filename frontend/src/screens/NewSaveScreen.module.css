@@ -13,7 +13,9 @@
   padding: var(--sp-5) var(--sp-4) var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: linear-gradient(180deg, var(--panel), transparent 60%);
+  /* 實心（使用者 2026-11-11 指定）。原本是淡出到透明：
+     linear-gradient(180deg, var(--panel), transparent 60%) */
+  background: var(--panel);
 }
 
 .panelTitle {

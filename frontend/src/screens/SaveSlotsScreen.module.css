@@ -58,7 +58,98 @@
   outline: none;
 }
 
-/* 封存的存檔是唯讀成績單，視覺上刻意壓低。 */
+/**
+ * 四個角的括號，游標移上去時往外推一格——跟標題畫面的主選單按鈕
+ * （MenuButton）同一套動畫，使用者 2026-11-12 指定存檔格也要有。
+ * .slot 自己畫左上與右下，.frame 畫右上與左下。
+ *
+ * 左邊那兩個角的起點是 -2px 不是 -1px：存檔格的左框是 2px 的色條。
+ */
+.slot::before,
+.slot::after,
+.frame::before,
+.frame::after {
+  content: "";
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--ac);
+  opacity: 0;
+  transition:
+    opacity var(--dur) ease,
+    inset var(--dur) ease;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.slot::before {
+  top: -1px;
+  left: -2px;
+  border-width: 1px 0 0 1px;
+}
+
+.slot::after {
+  right: -1px;
+  bottom: -1px;
+  border-width: 0 1px 1px 0;
+}
+
+.frame::before {
+  top: -1px;
+  right: -1px;
+  border-width: 1px 1px 0 0;
+}
+
+.frame::after {
+  bottom: -1px;
+  left: -2px;
+  border-width: 0 0 1px 1px;
+}
+
+.slot:hover::before,
+.slot:focus-visible::before,
+.slot:hover::after,
+.slot:focus-visible::after,
+.slot:hover .frame::before,
+.slot:focus-visible .frame::before,
+.slot:hover .frame::after,
+.slot:focus-visible .frame::after {
+  opacity: 1;
+}
+
+.slot:hover::before,
+.slot:focus-visible::before {
+  top: -4px;
+  left: -5px;
+}
+
+.slot:hover::after,
+.slot:focus-visible::after {
+  right: -4px;
+  bottom: -4px;
+}
+
+.slot:hover .frame::before,
+.slot:focus-visible .frame::before {
+  top: -4px;
+  right: -4px;
+}
+
+.slot:hover .frame::after,
+.slot:focus-visible .frame::after {
+  bottom: -4px;
+  left: -5px;
+}
+
+.slot:active {
+  background: var(--ac-wash);
+}
+
+/* 封存的存檔是唯讀結算畫面，視覺上刻意壓低。 */
 .sealed {
   border-left-color: var(--fg-faint);
   background: var(--panel);
@@ -66,9 +157,9 @@
 
 .sealed:hover,
 .sealed:focus-visible {
-  border-left-color: var(--fg-dim);
-  background: var(--panel-raised);
-  box-shadow: none;
+  border-left-color: var(--ac);
+  background: linear-gradient(180deg, var(--panel-raised), var(--ac-wash));
+  box-shadow: 0 0 18px -6px var(--ac-glow);
 }
 
 .slotTop {
