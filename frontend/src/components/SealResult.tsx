@@ -47,13 +47,13 @@ export function SealResult({ trip, totals, dayCount, onDone }: Props) {
           <div className={s.row} style={delay(AT.days)}>
             <dt className="hudLabel">天數</dt>
             <dd className={s.value}>
-              <CountUp value={dayCount} format={(n) => `${fmt(n)} 天`} delay={AT.days} />
+              <CountUp duration={650} value={dayCount} format={(n) => `${fmt(n)} 天`} delay={AT.days} />
             </dd>
           </div>
           <div className={s.row} style={delay(AT.entries)}>
             <dt className="hudLabel">紀錄</dt>
             <dd className={s.value}>
-              <CountUp value={totals.entryCount} format={(n) => `${fmt(n)} 筆`} delay={AT.entries} />
+              <CountUp duration={650} value={totals.entryCount} format={(n) => `${fmt(n)} 筆`} delay={AT.entries} />
             </dd>
           </div>
 
@@ -69,13 +69,14 @@ export function SealResult({ trip, totals, dayCount, onDone }: Props) {
               <div className={s.row} style={delay(AT.money)}>
                 <dt className="hudLabel">台幣</dt>
                 <dd className={s.value}>
-                  <CountUp value={totals.twdConfirmed} format={fmtTwd} delay={AT.money} />
+                  <CountUp duration={650} value={totals.twdConfirmed} format={fmtTwd} delay={AT.money} />
                 </dd>
               </div>
               <div className={s.row} style={delay(AT.money + 150)}>
                 <dt className="hudLabel">{trip.currency}</dt>
                 <dd className={`${s.value} ${s.foreign}`}>
                   <CountUp
+                    duration={650}
                     value={totals.foreignSpent}
                     format={(n) => `${trip.currency} ${fmt(n)}`}
                     delay={AT.money + 150}

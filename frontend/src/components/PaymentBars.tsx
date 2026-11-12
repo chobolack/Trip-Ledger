@@ -52,7 +52,7 @@ export function PaymentBars({ trip, expenses, selected, onSelect }: Props) {
             {/* 進場時從左邊長出來，一條接一條（使用者 2026-11-12 指定）。 */}
             <span
               className={`${s.fill} ${rowsSeen ? s.fillOn : ''}`}
-              style={{ width: `${(r.share * 100).toFixed(2)}%`, animationDelay: `${i * 90}ms` }}
+              style={{ width: `${(r.share * 100).toFixed(2)}%`, animationDelay: `${i * 130}ms` }}
             />
           </span>
         </button>

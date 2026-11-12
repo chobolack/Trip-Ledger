@@ -22,7 +22,7 @@ interface Options {
  *   這裡回傳的只拿去顯示。
  * - 系統開了「減少動態效果」就直接回傳 `target`，不滾。
  */
-export function useCountUp(target: number, { duration = 650, delay = 0 }: Options = {}): number {
+export function useCountUp(target: number, { duration = 1100, delay = 0 }: Options = {}): number {
   const [shown, setShown] = useState(() => (prefersReducedMotion() ? target : 0));
   /* 目前顯示到哪。用 ref 而不是讀 state：effect 裡要拿「此刻」的值當起點，
      但不該因為它每一格都在變而重跑 effect。 */

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { DeleteWipe } from '../components/DeleteWipe';
 import { ExpenseList } from '../components/ExpenseList';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SealResult } from '../components/SealResult';
@@ -25,6 +26,15 @@ import { tripTotals } from '../domain/money';
 import { isRevising, type Category, type Expense, type PaymentMethod, type Trip } from '../domain/types';
 import s from './TripScreen.module.css';
 
+/**
+ * 刪除存檔的演出（DeleteWipe）要不要播。
+ *
+ * **目前關著**（使用者 2026-11-12 指定：程式碼先保留，上線先不呈現——
+ * 效果還沒調到滿意）。關著的時候刪除跟以前一樣，確認後直接回存檔列表。
+ * 要打開就把這裡改成 true，其他地方都不用動。
+ */
+const DELETE_WIPE_ENABLED = false;
+
 export function TripScreen() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
@@ -38,6 +48,8 @@ export function TripScreen() {
   /* 結算演出只在「剛按下封存」那一次播。是畫面上的暫時狀態，不存進資料——
      之後再打開這個存檔就直接是結算畫面。 */
   const [showResult, setShowResult] = useState(false);
+  /* 刪除演出播放中。這時資料已經刪掉了，畫面上的存檔只是還留在記憶體裡的殘影。 */
+  const [wiping, setWiping] = useState(false);
   /* 點圓餅切片選的分類、點長條選的付款方式。只影響下方明細，
      圖表本身永遠顯示完整占比——否則點一下圖就只剩一片，沒得比了。
 
@@ -179,8 +191,10 @@ export function TripScreen() {
       setDeleteArmed(true);
       return;
     }
+    /* 先刪資料、再演出：演出只是演出，中途關掉 App 也不會留下刪到一半的存檔。 */
     await deleteTrip(trip!.id);
-    nav('/saves', { replace: true });
+    if (!DELETE_WIPE_ENABLED || prefersReducedMotion()) nav('/saves', { replace: true });
+    else setWiping(true);
   }
 
   /* 存檔層級的動作。只建一份，兩個位置共用——複製一份用 CSS 藏起來的話，
@@ -230,6 +244,7 @@ export function TripScreen() {
         sub={revising ? 'Revising' : sealed ? 'Result' : 'In Progress'}
         backTo="/saves"
       />
+      {wiping && <DeleteWipe name={trip.name} onDone={() => nav('/saves', { replace: true })} />}
       {showResult && sealed && (
         <SealResult
           trip={trip}
