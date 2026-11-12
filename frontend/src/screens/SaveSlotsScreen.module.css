@@ -35,9 +35,12 @@
 
 .slot {
   position: relative;
-  display: block;
+  /* 存檔欄：左邊檔案編號、右邊內容，兩欄等高。 */
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-3);
   width: 100%;
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3);
   border: 1px solid var(--line);
   border-left: 2px solid var(--ac-deep);
   border-radius: var(--r);
@@ -170,7 +173,8 @@
 }
 
 .name {
-  margin: 2px 0 var(--sp-1);
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   font-size: 18px;
   font-weight: 600;
@@ -204,13 +208,159 @@
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-1) var(--sp-3);
+  gap: 0 var(--sp-3);
+  margin-top: 2px;
   font-family: var(--f-mono);
   font-size: 12px;
   color: var(--fg-dim);
 }
 
 .metaKey {
+  color: var(--fg-faint);
+}
+
+/* ─── 存檔欄的內部 ─────────────────────────────────────────────── */
+
+/* 左側檔案編號。右邊一條分隔線，把它跟內容切開——像記憶卡管理畫面的欄位。 */
+.fileNo {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  padding-right: var(--sp-3);
+  border-right: 1px solid var(--line);
+  font-family: var(--f-mono);
+  transition: border-color var(--dur) ease;
+}
+
+.fileNoLabel {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--fg-faint);
+}
+
+.fileNoNum {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ac);
+  transition: text-shadow var(--dur) ease;
+}
+
+.sealed .fileNoNum {
+  color: var(--fg-dim);
+}
+
+.slot:hover .fileNo,
+.slot:focus-visible .fileNo {
+  border-right-color: var(--ac-deep);
+}
+
+.slot:hover .fileNoNum,
+.slot:focus-visible .fileNoNum {
+  color: var(--ac);
+  text-shadow: 0 0 12px var(--ac-glow);
+}
+
+.slotBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 記帳足跡：每天一格。 */
+.pips {
+  display: flex;
+  gap: 2px;
+  margin-top: var(--sp-2);
+}
+
+.pip {
+  flex: 1;
+  /* 天數少的時候格子不要被拉成長條。 */
+  max-width: 16px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--line);
+}
+
+.pipOn {
+  background: var(--ac-deep);
+}
+
+.sealed .pipOn {
+  background: var(--fg-faint);
+}
+
+.slot:hover .pipOn,
+.slot:focus-visible .pipOn {
+  background: var(--ac);
+}
+
+/* 進行中存檔的「今天」。 */
+.pipNow {
+  background: var(--ok);
+  animation: pipBlink 1.4s ease-in-out infinite;
+}
+
+@keyframes pipBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pipNow {
+    animation: none;
+  }
+}
+
+/* 天數筆數在左、金額在右。窄畫面擠不下時金額掉到下一行、仍然靠右。 */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--sp-3);
+  margin-top: var(--sp-2);
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.counts {
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+
+.counts b {
+  font-weight: 600;
+  color: var(--fg-dim);
+}
+
+.money {
+  margin-left: auto;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.moneyForeign {
+  margin-left: 6px;
+  color: var(--ac);
+}
+
+.lastSave {
+  margin-top: var(--sp-1);
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--fg-faint);
 }
 

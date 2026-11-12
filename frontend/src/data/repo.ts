@@ -8,6 +8,7 @@
  * 見 docs/規格.md〈刪除就是真的刪除〉。
  */
 import { getDb } from './db';
+import { tripTotals, type TripTotals } from '../domain/money';
 import {
   DEFAULT_CARD_FEE_PCT,
   DEFAULT_CARD_REGION,
@@ -322,6 +323,31 @@ export interface TripSummary {
   /** 旅程天數（起始日到今天或封存日，含頭尾）。 */
   dayCount: number;
   status: TripStatus;
+  /**
+   * 最後存檔時間（ISO 8601）：存檔本身與底下每一筆花費的 `updatedAt` 取最晚的。
+   * 不能只看 `trip.updatedAt`——記一筆帳動的是花費，存檔那筆資料不會變。
+   */
+  lastSavedAt: string;
+  /** 金額總計。跟存檔內頁的花費總計是同一個算法，沒有另外算。 */
+  totals: TripTotals;
+  /**
+   * 旅程每一天有沒有記帳，從出發日起一天一格，長度＝`dayCount`。
+   * 存檔欄拿來畫那排小格子。旅程太長（超過 `MAX_DAY_PIPS` 天）時是 null——
+   * 格子會細到看不見，畫面改用一句文字帶過。
+   */
+  days: boolean[] | null;
+}
+
+/** 存檔欄那排「每天一格」最多畫幾格。超過就不畫。 */
+export const MAX_DAY_PIPS = 31;
+
+/** 出發日往後數第 n 天的日期（YYYY-MM-DD，本地時間）。 */
+function dayAfter(startedOn: string, n: number): string {
+  const d = new Date(`${startedOn}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 export async function listTripSummaries(): Promise<TripSummary[]> {
@@ -329,11 +355,19 @@ export async function listTripSummaries(): Promise<TripSummary[]> {
   const summaries = await Promise.all(
     trips.map(async (trip) => {
       const expenses = await listExpenses(trip.id);
+      const dayCount = spanInDays(trip.startedOn, trip.endedOn ?? today());
+      const spentDates = new Set(expenses.map((e) => e.spentOn));
       return {
         trip,
         entryCount: expenses.length,
-        dayCount: spanInDays(trip.startedOn, trip.endedOn ?? today()),
+        dayCount,
         status: trip.status,
+        lastSavedAt: expenses.reduce((max, e) => (e.updatedAt > max ? e.updatedAt : max), trip.updatedAt),
+        totals: tripTotals(trip, expenses),
+        days:
+          dayCount <= MAX_DAY_PIPS
+            ? Array.from({ length: dayCount }, (_, i) => spentDates.has(dayAfter(trip.startedOn, i)))
+            : null,
       };
     }),
   );
