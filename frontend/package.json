@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:inmuking": "vite build --mode inmuking",
+    "build:all": "npm run build && npm run build:inmuking",
     "lint": "oxlint",
     "preview": "vite preview"
   },

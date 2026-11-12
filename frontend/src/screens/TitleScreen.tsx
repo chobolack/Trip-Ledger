@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MenuButton } from '../components/MenuButton';
 import { useOnline } from '../hooks/useOnline';
 import { useTripSummaries } from '../hooks/useTripSummaries';
+import { t } from '../variant/copy';
 import s from './TitleScreen.module.css';
 
 /**
@@ -62,8 +63,8 @@ export function TitleScreen() {
 
       <div className={s.center}>
         <div className={s.titleBlock}>
-          <p className={s.zhTitle}>旅費記帳</p>
-          <h1 className={s.enTitle}>TRIP LEDGER</h1>
+          <p className={s.zhTitle}>{t('旅費記帳')}</p>
+          <h1 className={s.enTitle}>{t('TRIP LEDGER')}</h1>
           <div className={s.rule}>
             <span className={s.ruleLine} />
             <span className={s.ruleTick} />

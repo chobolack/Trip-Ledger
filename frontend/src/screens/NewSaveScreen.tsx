@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { createTrip, today } from '../data/repo';
-import { CURRENCIES, DEFAULT_CURRENCY } from '../domain/currencies';
+import { DEFAULT_CURRENCY, selectableCurrencies } from '../domain/currencies';
+import { t } from '../variant/copy';
 import s from './NewSaveScreen.module.css';
 
 /**
@@ -13,7 +14,11 @@ import s from './NewSaveScreen.module.css';
 export function NewSaveScreen() {
   const nav = useNavigate();
   const [name, setName] = useState('');
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
+  /* 惡搞版只列得出它指定的幣別；預設值不在清單裡時改用清單第一個。 */
+  const currencies = selectableCurrencies();
+  const [currency, setCurrency] = useState(
+    currencies.some((c) => c.code === DEFAULT_CURRENCY) ? DEFAULT_CURRENCY : currencies[0].code,
+  );
   const [startedOn, setStartedOn] = useState(today());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -22,7 +27,7 @@ export function NewSaveScreen() {
     const trimmedName = name.trim();
 
     if (!trimmedName) return setError('請給這趟旅程一個名稱。');
-    if (!CURRENCIES.some((c) => c.code === currency)) return setError('請選擇外幣種類。');
+    if (!currencies.some((c) => c.code === currency)) return setError('請選擇外幣種類。');
     if (!startedOn) return setError('請選擇出發日期。');
 
     setError(null);
@@ -51,7 +56,7 @@ export function NewSaveScreen() {
               className="input"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="例如：2027 東京"
+              placeholder={t('例如：2027 東京')}
               autoFocus
             />
           </div>
@@ -66,9 +71,9 @@ export function NewSaveScreen() {
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
               >
-                {CURRENCIES.map((c) => (
+                {currencies.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.name}　{c.code}
+                    {t(`${c.name}　${c.code}`)}
                   </option>
                 ))}
               </select>

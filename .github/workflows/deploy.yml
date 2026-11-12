@@ -32,7 +32,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
-      - run: npm run build
+      # 正常版＋惡搞版「野獸記帳」。後者蓋在 dist/inmuking/ 底下，
+      # 順序不能反——見 frontend/vite.config.ts。
+      - run: npm run build:all
 
       - uses: actions/upload-pages-artifact@v3
         with:
