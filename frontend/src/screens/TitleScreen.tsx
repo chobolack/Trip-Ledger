@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MenuButton } from '../components/MenuButton';
 import { useOnline } from '../hooks/useOnline';
+import { backupDueFor } from '../hooks/useBackupDue';
 import { useTripSummaries } from '../hooks/useTripSummaries';
-import { t } from '../variant/copy';
 import s from './TitleScreen.module.css';
 
 /**
@@ -35,6 +35,8 @@ export function TitleScreen() {
      這裡拿到的是最近出發的那一趟。其餘的從「過往存檔」進去。 */
   const active = summaries.find((x) => x.status === 'active');
   const activeId = active?.trip.id;
+  /* 該備份了就把右上角的備份入口點亮。只提醒，不擋操作。見 domain/backupReminder.ts。 */
+  const due = backupDueFor(summaries, loading) !== 'none';
 
   useEffect(() => {
     if (loading || !launchRedirectPending) return;
@@ -56,15 +58,22 @@ export function TitleScreen() {
         {/* 備份入口放在狀態列，不放主選單——使用者指定主畫面只有兩個按鈕。
             但它必須在標題畫面構得到：新裝置一筆資料都沒有，
             「過往存檔」是停用的，匯入的入口不能藏在它後面。 */}
-        <button type="button" className={s.dataBtn} onClick={() => nav('/data')}>
-          <span className="hudLabel">備份 · BACKUP</span>
+        <button
+          type="button"
+          className={`${s.dataBtn} ${due ? s.dataBtnDue : ''}`}
+          onClick={() => nav('/data')}
+        >
+          <span className="hudLabel">
+            {due && <span className={`${s.dot} ${s.dotOffline}`} />}
+            {due ? '該備份了 · BACKUP' : '備份 · BACKUP'}
+          </span>
         </button>
       </div>
 
       <div className={s.center}>
         <div className={s.titleBlock}>
-          <p className={s.zhTitle}>{t('旅費記帳')}</p>
-          <h1 className={s.enTitle}>{t('TRIP LEDGER')}</h1>
+          <p className={s.zhTitle}>旅費記帳</p>
+          <h1 className={s.enTitle}>TRIP LEDGER</h1>
           <div className={s.rule}>
             <span className={s.ruleLine} />
             <span className={s.ruleTick} />

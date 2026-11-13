@@ -1,5 +1,3 @@
-import { CURRENCY_CODES_ONLY, t } from '../variant/copy';
-
 /**
  * 可選的幣別。
  *
@@ -32,18 +30,7 @@ export const DEFAULT_CURRENCY = 'JPY';
 
 /** 查中文名。查不到就回代碼本身，不要讓畫面變空白。 */
 export function currencyName(code: string): string {
-  const name = CURRENCIES.find((c) => c.code === code)?.name;
-  // t()：惡搞版會把部分幣別名稱換掉，正常版原樣回傳。見 variant/copy.ts。
-  return name === undefined ? code : t(name);
-}
-
-/**
- * 新存檔的下拉選單要列哪些幣別。正常版就是整份 `CURRENCIES`；
- * 惡搞版只剩它指定的那幾個。
- */
-export function selectableCurrencies(): readonly Currency[] {
-  if (CURRENCY_CODES_ONLY === null) return CURRENCIES;
-  return CURRENCIES.filter((c) => CURRENCY_CODES_ONLY!.includes(c.code));
+  return CURRENCIES.find((c) => c.code === code)?.name ?? code;
 }
 
 /** 「日圓 JPY」這種同時給人看與給對帳用的寫法。 */

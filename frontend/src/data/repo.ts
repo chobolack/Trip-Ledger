@@ -8,7 +8,7 @@
  * 見 docs/規格.md〈刪除就是真的刪除〉。
  */
 import { getDb } from './db';
-import { tripTotals, type TripTotals } from '../domain/money';
+import { budgetStatus, tripTotals, type BudgetStatus, type TripTotals } from '../domain/money';
 import {
   DEFAULT_CARD_FEE_PCT,
   DEFAULT_CARD_REGION,
@@ -68,6 +68,8 @@ export interface NewTripInput {
   name: string;
   currency: string;
   startedOn: string;
+  /** 預算（台幣）。不設就不傳或傳 null。 */
+  budgetTwd?: number | null;
 }
 
 export async function createTrip(input: NewTripInput): Promise<Trip> {
@@ -86,6 +88,10 @@ export async function createTrip(input: NewTripInput): Promise<Trip> {
     sealRateAt: null,
     sealRateSource: null,
     cardFeePct: DEFAULT_CARD_FEE_PCT,
+    budgetTwd: input.budgetTwd ?? null,
+    // 估算匯率不在這裡抓：建檔不能等網路。存檔頁第一次開啟時補，見 TripScreen。
+    estRate: null,
+    estRateAt: null,
     ownerId: null, // 預留：多人共用，見 docs/規格.md〈預留但不做〉
   };
   const db = await getDb();
@@ -336,6 +342,8 @@ export interface TripSummary {
    * 格子會細到看不見，畫面改用一句文字帶過。
    */
   days: boolean[] | null;
+  /** 預算用掉多少。沒設預算是 null。跟存檔內頁的預算是同一個算法。 */
+  budget: BudgetStatus | null;
 }
 
 /** 存檔欄那排「每天一格」最多畫幾格。超過就不畫。 */
@@ -364,6 +372,7 @@ export async function listTripSummaries(): Promise<TripSummary[]> {
         status: trip.status,
         lastSavedAt: expenses.reduce((max, e) => (e.updatedAt > max ? e.updatedAt : max), trip.updatedAt),
         totals: tripTotals(trip, expenses),
+        budget: budgetStatus(trip, expenses),
         days:
           dayCount <= MAX_DAY_PIPS
             ? Array.from({ length: dayCount }, (_, i) => spentDates.has(dayAfter(trip.startedOn, i)))

@@ -37,6 +37,11 @@
   color: var(--ac);
 }
 
+/* 該備份了：入口改成警示色，前面多一顆黃點（跟離線狀態用同一顆）。 */
+.dataBtnDue span {
+  color: var(--warn);
+}
+
 .dot {
   display: inline-block;
   width: 5px;

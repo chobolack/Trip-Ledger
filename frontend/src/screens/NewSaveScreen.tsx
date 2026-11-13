@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { createTrip, today } from '../data/repo';
-import { DEFAULT_CURRENCY, selectableCurrencies } from '../domain/currencies';
-import { t } from '../variant/copy';
+import { CURRENCIES, DEFAULT_CURRENCY } from '../domain/currencies';
 import s from './NewSaveScreen.module.css';
 
 /**
@@ -14,12 +13,10 @@ import s from './NewSaveScreen.module.css';
 export function NewSaveScreen() {
   const nav = useNavigate();
   const [name, setName] = useState('');
-  /* 惡搞版只列得出它指定的幣別；預設值不在清單裡時改用清單第一個。 */
-  const currencies = selectableCurrencies();
-  const [currency, setCurrency] = useState(
-    currencies.some((c) => c.code === DEFAULT_CURRENCY) ? DEFAULT_CURRENCY : currencies[0].code,
-  );
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   const [startedOn, setStartedOn] = useState(today());
+  /* 預算（台幣），選填。空字串＝不設。之後在存檔頁可以改。 */
+  const [budget, setBudget] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -27,13 +24,18 @@ export function NewSaveScreen() {
     const trimmedName = name.trim();
 
     if (!trimmedName) return setError('請給這趟旅程一個名稱。');
-    if (!currencies.some((c) => c.code === currency)) return setError('請選擇外幣種類。');
+    if (!CURRENCIES.some((c) => c.code === currency)) return setError('請選擇外幣種類。');
     if (!startedOn) return setError('請選擇出發日期。');
+
+    const budgetText = budget.replace(/[,，\s]/g, '');
+    const budgetTwd = budgetText === '' ? null : Math.round(Number(budgetText));
+    if (budgetTwd !== null && !(Number.isFinite(budgetTwd) && budgetTwd > 0))
+      return setError('預算請填大於 0 的數字，不設預算就留空。');
 
     setError(null);
     setSaving(true);
     try {
-      const trip = await createTrip({ name: trimmedName, currency, startedOn });
+      const trip = await createTrip({ name: trimmedName, currency, startedOn, budgetTwd });
       nav(`/trip/${trip.id}`, { replace: true });
     } catch (e) {
       setSaving(false);
@@ -56,7 +58,7 @@ export function NewSaveScreen() {
               className="input"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={t('例如：2027 東京')}
+              placeholder="例如：2027 東京"
               autoFocus
             />
           </div>
@@ -71,9 +73,9 @@ export function NewSaveScreen() {
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
               >
-                {currencies.map((c) => (
+                {CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {t(`${c.name}　${c.code}`)}
+                    {c.name}　{c.code}
                   </option>
                 ))}
               </select>
@@ -90,6 +92,19 @@ export function NewSaveScreen() {
                 onChange={(e) => setStartedOn(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="field">
+            <span className="fieldLabel">
+              <span className="hudLabel">預算（台幣，可不填）</span>
+            </span>
+            <input
+              className="input mono"
+              inputMode="numeric"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              placeholder="例如：50000"
+            />
           </div>
 
           {error && <p className="errorText">{error}</p>}

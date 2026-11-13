@@ -10,6 +10,7 @@ import {
   type ImportResult,
 } from '../data/backup';
 import { buildTripBackup } from '../data/backup';
+import { getLastBackupAt, markBackedUp } from '../data/backupMark';
 import { downloadText } from '../data/download';
 import { getTrip, listExpenses, listTrips } from '../data/repo';
 import { csvFilename, toCsv } from '../domain/csv';
@@ -25,6 +26,13 @@ import s from './DataScreen.module.css';
  * 一定要從標題畫面進得來：全新的裝置上一筆資料都沒有，
  * 「過往存檔」是停用狀態，匯入的入口不能藏在它後面。
  */
+/** 2026/11/13 20:07 這種寫法，用裝置當地時間。 */
+function formatStamp(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 export function DataScreen() {
   const [stats, setStats] = useState<{ trips: number; expenses: number } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -36,6 +44,8 @@ export function DataScreen() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [picked, setPicked] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  /** 這台裝置上次下載完整備份的時間。主畫面的備份提醒看的就是它。 */
+  const [lastBackupAt, setLastBackupAt] = useState(getLastBackupAt);
 
   async function refresh() {
     setStats(await dataStats());
@@ -56,6 +66,10 @@ export function DataScreen() {
     try {
       const backup = await buildBackup();
       downloadText(backupFilename(), JSON.stringify(backup), 'application/json');
+      /* 只有完整備份才算數——單一存檔的匯出不是全部的資料。
+         瀏覽器不會告訴網頁檔案到底有沒有存成功，所以這裡記的是「按下去而且沒出錯」。 */
+      markBackedUp();
+      setLastBackupAt(getLastBackupAt());
     } catch (e) {
       setError(e instanceof Error ? `匯出失敗：${e.message}` : '匯出失敗。');
     }
@@ -141,6 +155,12 @@ export function DataScreen() {
             <div className={s.stat}>
               <span className="hudLabel">花費紀錄</span>
               <span className={s.statValue}>{stats ? stats.expenses : '—'}</span>
+            </div>
+            <div className={s.stat}>
+              <span className="hudLabel">上次完整備份</span>
+              <span className={`${s.statValue} ${s.statValueSmall}`}>
+                {lastBackupAt ? formatStamp(lastBackupAt) : '還沒備份過'}
+              </span>
             </div>
           </div>
         </div>

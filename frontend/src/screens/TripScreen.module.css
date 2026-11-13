@@ -124,10 +124,35 @@
   font-size: 16px;
 }
 
+/* 封存後的備份提醒。跟備份頁那塊「為什麼需要備份」同一個樣子。 */
+.backupHint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--warn);
+  border-radius: var(--r);
+  background: rgb(251 191 36 / 5%);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fg-dim);
+}
+
 /* 海外刷卡手續費率。封存後整塊不顯示——改它會動到已凍結的總額。 */
+/* 手續費率與預算並排。每格至少 150px，排不下（窄手機）就各佔一列。 */
+.settings {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-top: var(--sp-4);
+}
+
 .feePct {
   display: block;
-  margin-top: var(--sp-4);
   padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r);
@@ -149,6 +174,11 @@
 
 .feePctUnit {
   color: var(--fg-dim);
+}
+
+/* 預算是幾萬塊的金額，比百分比那格寬。 */
+.budgetInput .input {
+  width: 12ch;
 }
 
 .listHead {

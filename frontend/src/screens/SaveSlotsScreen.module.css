@@ -354,8 +354,30 @@
   color: var(--ac);
 }
 
-.lastSave {
+/* 最底下一列：左邊最後存檔時間，右邊預算結論（對齊上面的總額）。 */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--sp-3);
   margin-top: var(--sp-1);
+}
+
+.budget {
+  margin-left: auto;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ok);
+}
+
+.budgetOver {
+  color: var(--danger);
+}
+
+.lastSave {
   font-family: var(--f-mono);
   font-size: 9px;
   font-weight: 600;

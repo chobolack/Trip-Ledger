@@ -117,6 +117,72 @@ export function tripTotals(trip: Trip, expenses: Expense[]): TripTotals {
   };
 }
 
+// ─── 預算 ───────────────────────────────────────────────────────────
+
+export interface BudgetStatus {
+  /** 預算（台幣）。 */
+  budgetTwd: number;
+  /**
+   * 目前花了多少台幣，**含刷卡手續費**——預算管的是實際從口袋出去的錢。
+   * null＝算不出來：有外幣花費，但封存匯率與估算匯率都還沒有。
+   */
+  spentTwd: number | null;
+  /** 預算減掉已花的。負數＝超支。算不出來時為 null。 */
+  remainingTwd: number | null;
+  /**
+   * `spentTwd` 是不是用估算匯率推出來的。
+   * true 的話畫面要標「約」並寫出用的是哪天的匯率；封存後會變成 false，數字會小跳。
+   */
+  estimated: boolean;
+  /** 換算用的匯率。全部都是台幣、不需要換算時為 null。 */
+  rate: number | null;
+}
+
+/**
+ * 預算用掉多少。沒設預算回傳 null。
+ *
+ * 匯率的優先順序：
+ * 1. **封存匯率**——這趟的真實成本，有就一定用它，結果是確定的。
+ * 2. 沒有外幣花費（國內旅行，或剛好全部記台幣）——不用換算，結果也是確定的。
+ * 3. **估算匯率**——旅途中用它先推算，結果標成估算。
+ * 4. 都沒有——算不出來。**不拿台幣那一半充數**，那會顯示一個看起來沒超支的假數字。
+ *
+ * 算法直接借 `tripTotals`：把要用的匯率當成封存匯率代進去，
+ * 這樣外幣換算、手續費（含外幣計價的刷卡）都跟結算時是同一套，不會兩邊各算各的。
+ */
+export function budgetStatus(trip: Trip, expenses: Expense[]): BudgetStatus | null {
+  const budgetTwd = trip.budgetTwd;
+  if (typeof budgetTwd !== 'number' || !(budgetTwd > 0)) return null;
+
+  const usable = (r: number | null | undefined): r is number => typeof r === 'number' && r > 0;
+  const exact = tripTotals(trip, expenses);
+
+  let spentTwd: number | null;
+  let estimated = false;
+  let rate: number | null = null;
+
+  if (usable(trip.sealRate)) {
+    spentTwd = exact.grandTotalTwd;
+    rate = trip.sealRate;
+  } else if (exact.foreignSpent === 0 && exact.cardFeeUnknown === 0) {
+    spentTwd = exact.twdConfirmed + exact.cardFeeTwd;
+  } else if (usable(trip.estRate)) {
+    spentTwd = tripTotals({ ...trip, sealRate: trip.estRate }, expenses).grandTotalTwd;
+    estimated = true;
+    rate = trip.estRate;
+  } else {
+    spentTwd = null;
+  }
+
+  return {
+    budgetTwd,
+    spentTwd,
+    remainingTwd: spentTwd === null ? null : budgetTwd - spentTwd,
+    estimated,
+    rate,
+  };
+}
+
 // ─── 分類占比 ───────────────────────────────────────────────────────
 
 export interface CategorySlice {

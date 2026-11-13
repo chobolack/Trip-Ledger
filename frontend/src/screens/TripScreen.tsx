@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { BudgetPanel } from '../components/BudgetPanel';
 import { DeleteWipe } from '../components/DeleteWipe';
 import { ExpenseList } from '../components/ExpenseList';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SealResult } from '../components/SealResult';
 import { StatsPanel } from '../components/StatsPanel';
 import { TotalsPanel } from '../components/TotalsPanel';
+import { getLastBackupAt } from '../data/backupMark';
 import { fetchRateToTwd } from '../data/rates';
 import {
   beginRevision,
@@ -21,6 +23,7 @@ import {
 } from '../data/repo';
 import { prefersReducedMotion } from '../hooks/useCountUp';
 import { NARROW, useMediaQuery } from '../hooks/useMediaQuery';
+import { useOnline } from '../hooks/useOnline';
 import { currencyLabel } from '../domain/currencies';
 import { isDomestic, tripTotals } from '../domain/money';
 import { isRevising, type Category, type Expense, type PaymentMethod, type Trip } from '../domain/types';
@@ -62,6 +65,9 @@ export function TripScreen() {
   /* 手續費率的輸入框是獨立的字串狀態，不直接綁 trip.cardFeePct——
      清空輸入框時中間會經過空字串，直接寫進資料會變成 NaN。 */
   const [feePctText, setFeePctText] = useState('');
+  /* 預算的輸入框，理由同上。空字串＝沒設預算。 */
+  const [budgetText, setBudgetText] = useState('');
+  const online = useOnline();
   /* 手機上封存／刪除要換到抬頭卡外面。這是少數 CSS 做不到的情況——
      元素得換父層，見 useMediaQuery 的說明。 */
   const narrow = useMediaQuery(NARROW);
@@ -71,12 +77,49 @@ export function TripScreen() {
     const t = await getTrip(id);
     setTrip(t ?? null);
     setFeePctText(t ? String(t.cardFeePct) : '');
+    setBudgetText(t && typeof t.budgetTwd === 'number' ? String(t.budgetTwd) : '');
     setExpenses(t ? await listExpenses(t.id) : []);
   }, [id]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * 補抓估算匯率（預算用，見 Trip.estRate）。
+   *
+   * 不在建立存檔時抓：建檔不能等網路。改成進行中的存檔每次開啟時檢查，
+   * 沒有就抓——新存檔建完會直接進到這個畫面，所以實際上就是建檔當下；
+   * 建檔時離線、或這個功能上線前就存在的存檔，則是之後第一次連線開啟時補上
+   * （使用者 2026-11-13 同意：那種情況用的是補抓當天的匯率，不是出發那天的）。
+   *
+   * 抓到一次就固定，不會每次開啟都更新——每天變動的話，預算剩多少會自己跳來跳去。
+   * 抓不到就算了，不報錯：這只是估算，預算面板自己會說明還沒有匯率。
+   */
+  const rateTripId = trip?.id;
+  const rateCurrency = trip?.currency;
+  const needEstRate =
+    trip != null &&
+    trip.status === 'active' &&
+    trip.currency !== 'TWD' &&
+    trip.sealRate === null &&
+    !(typeof trip.estRate === 'number' && trip.estRate > 0);
+
+  useEffect(() => {
+    if (!needEstRate || !online || !rateTripId || !rateCurrency) return;
+    let stale = false;
+    fetchRateToTwd(rateCurrency).then(
+      async (r) => {
+        if (stale) return;
+        await updateTrip(rateTripId, { estRate: r.rate, estRateAt: r.at });
+        if (!stale) await load();
+      },
+      () => {},
+    );
+    return () => {
+      stale = true;
+    };
+  }, [needEstRate, online, rateTripId, rateCurrency, load]);
 
   if (trip === undefined) {
     return (
@@ -103,6 +146,10 @@ export function TripScreen() {
      所以底下「長什麼樣」看 sealed，「能不能改」看 writable，兩者不能混用。 */
   const revising = isRevising(trip);
   const writable = !sealed || revising;
+  /* 這個存檔在上次完整備份之後有沒有動過（封存、修訂都會更新 updatedAt）。
+     每次渲染直接讀，不放 state：從備份頁回來時這個畫面會重新掛載，讀到的就是新的。 */
+  const lastBackupAt = getLastBackupAt();
+  const unbacked = lastBackupAt === null || Date.parse(trip.updatedAt) > Date.parse(lastBackupAt);
   const dayCount = spanInDays(trip.startedOn, trip.endedOn ?? today());
   const totals = tripTotals(trip, expenses);
   const shown = expenses.filter(
@@ -177,6 +224,31 @@ export function TripScreen() {
     }
     if (n === trip!.cardFeePct) return;
     await updateTrip(trip!.id, { cardFeePct: n });
+    await load();
+  }
+
+  /**
+   * 預算：離開輸入框才寫入。清空＝取消預算（預算面板跟著消失）；
+   * 打了認不得的東西或 0 以下就退回原本的值，不要默默把預算清掉。
+   */
+  async function onBudgetCommit() {
+    const current = typeof trip!.budgetTwd === 'number' ? trip!.budgetTwd : null;
+    const text = budgetText.replace(/[,，\s]/g, '');
+    let next: number | null;
+    if (text === '') next = null;
+    else {
+      const n = Number(text);
+      if (!Number.isFinite(n) || n <= 0) {
+        setBudgetText(current === null ? '' : String(current));
+        return;
+      }
+      next = Math.round(n);
+    }
+    if (next === current) {
+      setBudgetText(current === null ? '' : String(current));
+      return;
+    }
+    await updateTrip(trip!.id, { budgetTwd: next });
     await load();
   }
 
@@ -299,7 +371,20 @@ export function TripScreen() {
           totals={totals}
           onRetryRate={onRetryRate}
           retrying={busy === 'retrying'}
+          /* 有設預算才會畫出東西，見 BudgetPanel。 */
+          footer={<BudgetPanel trip={trip} expenses={expenses} />}
         />
+
+        {/* 封存之後還沒備份過：一趟結束是最該備份的時候，在這裡提一句。
+            只看這一個存檔，而且下載完整備份後就消失。修訂中不提——還沒改完。 */}
+        {sealed && !revising && unbacked && (
+          <div className={s.backupHint}>
+            <span>這趟已經封存，還沒有備份。資料只存在這台裝置上。</span>
+            <button type="button" className="btnGhost" onClick={() => nav('/data')}>
+              去備份
+            </button>
+          </div>
+        )}
 
         {rateError && (
           <p className="errorText">
@@ -309,8 +394,11 @@ export function TripScreen() {
 
         {/* 海外刷卡手續費率。封存後唯讀——改它會動到已凍結的總額，
             跟封存匯率同一條理由。要改就先進修訂模式。
-            整趟台幣的存檔沒有海外刷卡，這一格直接不出現。 */}
-        {writable && !isDomestic(trip) && (
+            整趟台幣的存檔沒有海外刷卡，這一格直接不出現。
+            跟預算並排成一列（使用者 2026-11-13 指定）；窄畫面排不下會自動換行。 */}
+        {writable && (
+          <div className={s.settings}>
+        {!isDomestic(trip) && (
           <label className={s.feePct}>
             <span className="hudLabel">海外刷卡手續費</span>
             <span className={s.feePctInput}>
@@ -329,6 +417,28 @@ export function TripScreen() {
               <span className={s.feePctUnit}>%</span>
             </span>
           </label>
+        )}
+
+        {/* 預算。可寫時才能改，封存後唯讀（要改先進修訂模式）。留空＝不設預算。 */}
+          <label className={s.feePct}>
+            <span className="hudLabel">預算（台幣，可不填）</span>
+            <span className={`${s.feePctInput} ${s.budgetInput}`}>
+              <span className={s.feePctUnit}>NT$</span>
+              <input
+                className="input"
+                inputMode="numeric"
+                value={budgetText}
+                onChange={(e) => setBudgetText(e.target.value)}
+                onBlur={onBudgetCommit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                }}
+                placeholder="未設定"
+                aria-label="這趟的預算，台幣"
+              />
+            </span>
+          </label>
+          </div>
         )}
 
         {/* 統計只在封存後出現：有凍結匯率才能把外幣現金與台幣放進同一個圓餅。 */}

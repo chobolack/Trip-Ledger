@@ -84,7 +84,7 @@ function savedAtLabel(iso: string): string {
 
 function Slot({ summary, index }: { summary: TripSummary; index: number }) {
   const nav = useNavigate();
-  const { trip, entryCount, dayCount, totals, days, lastSavedAt } = summary;
+  const { trip, entryCount, dayCount, totals, days, lastSavedAt, budget } = summary;
   const sealed = summary.status === 'archived';
   const domestic = isDomestic(trip);
 
@@ -165,7 +165,19 @@ function Slot({ summary, index }: { summary: TripSummary; index: number }) {
           </span>
         </span>
 
-        <span className={s.lastSave}>Last Save {savedAtLabel(lastSavedAt)}</span>
+        <span className={s.foot}>
+          <span className={s.lastSave}>Last Save {savedAtLabel(lastSavedAt)}</span>
+          {/* 封存後才給預算的結論（使用者 2026-11-13 指定），放在總額正下方。
+              進行中的不顯示——那時是估算值而且還在變，內頁的進度條才是看那個的地方。
+              封存時沒抓到匯率的話結論還是估算的，前面標「約」。 */}
+          {sealed && budget && budget.remainingTwd !== null && (
+            <span className={`${s.budget} ${budget.remainingTwd < 0 ? s.budgetOver : ''}`}>
+              {budget.remainingTwd < 0 ? '超出預算 ' : '預算內 · 剩 '}
+              {budget.estimated ? '約 ' : ''}
+              {fmtTwd(Math.abs(budget.remainingTwd))}
+            </span>
+          )}
+        </span>
       </span>
     </button>
   );

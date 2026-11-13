@@ -1,0 +1,81 @@
+/* 花費總計面板裡最底下的一區，用一條線跟上面的總額隔開。 */
+.block {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-3);
+}
+
+.value,
+.remain {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.value {
+  font-size: 15px;
+}
+
+.spent {
+  font-weight: 700;
+  color: var(--fg);
+}
+
+/* 預算本身是參考值，比已花費淡一級。 */
+.of {
+  color: var(--fg-dim);
+}
+
+.remain {
+  font-size: clamp(19px, 5.4vw, 24px);
+  font-weight: 700;
+  color: var(--ac);
+}
+
+/* 超支：只換顏色，不閃、不擋。 */
+.over {
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.bar {
+  height: 6px;
+  margin: var(--sp-3) 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+}
+
+.fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--ac);
+  transform-origin: left center;
+  transition: transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.fillOver {
+  background: var(--danger);
+}
+
+.note {
+  margin: var(--sp-3) 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fg-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}

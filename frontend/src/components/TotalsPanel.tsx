@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { CountUp } from './CountUp';
 import { currencyName } from '../domain/currencies';
 import { fmt, fmtTwd, isDomestic, type TripTotals } from '../domain/money';
@@ -10,6 +11,8 @@ interface Props {
   /** 匯率待補時重抓。只有封存且沒抓到匯率的存檔會用到。 */
   onRetryRate?: () => void;
   retrying?: boolean;
+  /** 接在面板最底下的內容。目前用來放預算（BudgetPanel）。 */
+  footer?: ReactNode;
 }
 
 /**
@@ -24,7 +27,7 @@ interface Props {
  * 使用者已表示這個呈現方式大概率會改，所以這裡只負責顯示，
  * 加總邏輯全在 domain/money.ts，改的時候不用動這個檔案的計算。
  */
-export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
+export function TotalsPanel({ trip, totals, onRetryRate, retrying, footer }: Props) {
   const domestic = isDomestic(trip);
   const sealed = trip.status === 'archived';
   const { twdConfirmed, foreignSpent, foreignAsTwd, cardFeeTwd, cardFeeUnknown, grandTotalTwd } =
@@ -65,6 +68,7 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
             </div>
           </div>
         )}
+        {footer}
       </div>
     );
   }
@@ -136,6 +140,7 @@ export function TotalsPanel({ trip, totals, onRetryRate, retrying }: Props) {
           </button>
         </div>
       )}
+      {footer}
     </div>
   );
 }

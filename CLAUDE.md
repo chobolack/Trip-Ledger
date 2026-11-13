@@ -26,7 +26,7 @@
 ```bash
 cd frontend && npm install && npm run dev    # http://localhost:5173
 cd frontend && npm run build                 # tsc -b + vite build
-cd frontend && npm run build:all             # 再加惡搞版「野獸記帳」，部署用這個（規格 §五之四）
+cd frontend && npm test                      # 驗算 src/domain/ 的計算規則，改 money.ts 後要跑
 ```
 
 `npm run lint`（oxlint）在這台機器被 Windows Application Control 擋住原生執行檔，
