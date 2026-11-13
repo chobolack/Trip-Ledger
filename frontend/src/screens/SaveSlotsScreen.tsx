@@ -172,7 +172,7 @@ function Slot({ summary, index }: { summary: TripSummary; index: number }) {
               封存時沒抓到匯率的話結論還是估算的，前面標「約」。 */}
           {sealed && budget && budget.remainingTwd !== null && (
             <span className={`${s.budget} ${budget.remainingTwd < 0 ? s.budgetOver : ''}`}>
-              {budget.remainingTwd < 0 ? '超出預算 ' : '預算內 · 剩 '}
+              {budget.remainingTwd < 0 ? '超出 ' : '剩餘 '}
               {budget.estimated ? '約 ' : ''}
               {fmtTwd(Math.abs(budget.remainingTwd))}
             </span>

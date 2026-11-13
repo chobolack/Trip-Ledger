@@ -395,3 +395,81 @@
   text-align: center;
   color: var(--fg-dim);
 }
+
+/* ─── 手機版面 ─────────────────────────────────────────────────── */
+
+/**
+ * 窄畫面（跟 useMediaQuery 的 NARROW 同一個門檻）改成使用者 2026-11-13 給的排法：
+ *
+ *   共 1 天 · 3 筆
+ *   LAST SAVE 2026/11/13 20:39
+ *               NT$ 52,362   超出預算 NT$ 2,362
+ *
+ * 金額獨立成最底下一列、放大，預算結論緊跟在它右邊。寬畫面上金額是跟天數
+ * 擠同一列的，手機上寬度不夠，金額常被擠到下一行，預算結論又再掉一行。
+ *
+ * 做法：.stats 與 .foot 改成 display: contents（等於拆掉這兩層包裝），
+ * 讓裡面四樣東西直接變成 .slotBody 這個格線的格子，再用 order 重排。
+ * 這樣不用為了手機另外寫一份 HTML。
+ */
+@media (max-width: 480px) {
+  .slotBody {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    column-gap: var(--sp-3);
+  }
+
+  /* 名稱、幣別日期、記帳足跡：照舊各佔一整列。 */
+  .slotBody > * {
+    grid-column: 1 / -1;
+  }
+
+  .stats,
+  .foot {
+    display: contents;
+  }
+
+  .counts {
+    order: 1;
+    grid-column: 1 / -1;
+    margin-top: var(--sp-2);
+    font-family: var(--f-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lastSave {
+    order: 2;
+    grid-column: 1 / -1;
+    margin-top: var(--sp-1);
+  }
+
+  /* 沒有預算結論時第二欄寬度是 0，金額自然靠到最右邊。 */
+  .money {
+    order: 3;
+    grid-column: 1;
+    justify-self: end;
+    margin: var(--sp-2) 0 0;
+    font-family: var(--f-mono);
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    /* 進行中的存檔是「NT$ 12,000 ＋JPY 62,000」兩個數字，放大後小手機一行放不下，
+       准許在兩個數字之間換行，不要撐破卡片。 */
+    white-space: normal;
+    text-align: right;
+  }
+
+  /* 外幣那個數字自己不拆開，要換行就整個掉到下一行。 */
+  .moneyForeign {
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .budget {
+    order: 4;
+    grid-column: 2;
+    margin: var(--sp-2) 0 0;
+    font-size: 12px;
+  }
+}
