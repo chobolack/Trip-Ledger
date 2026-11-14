@@ -432,7 +432,13 @@ export function TripScreen() {
           <div className={s.settings}>
         {/* 預算。可寫時才能改，封存後唯讀（要改先進修訂模式）。留空＝不設預算。 */}
           <label className={s.feePct}>
-            <span className="hudLabel">預算（台幣，可不填）</span>
+            {/* 手機上標題固定折成兩行（使用者 2026-11-14 指定），電腦維持一行。
+                <br> 平常是藏起來的，窄畫面才生效，見 .mobileBreak。 */}
+            <span className="hudLabel">
+              預算
+              <br className={s.mobileBreak} />
+              （台幣，可不填）
+            </span>
             <span className={`${s.feePctInput} ${s.budgetInput}`}>
               <span className={s.feePctUnit}>NT$</span>
               <input
@@ -452,7 +458,11 @@ export function TripScreen() {
 
         {!isDomestic(trip) && (
           <label className={s.feePct}>
-            <span className="hudLabel">海外刷卡手續費</span>
+            <span className="hudLabel">
+              海外刷卡
+              <br className={s.mobileBreak} />
+              手續費
+            </span>
             <span className={s.feePctInput}>
               <input
                 type="number"

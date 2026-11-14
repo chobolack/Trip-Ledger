@@ -219,6 +219,43 @@
   width: 12ch;
 }
 
+/**
+ * 手機：預算 7、手續費 3（使用者 2026-11-14 指定——對半分時預算那格太擠，
+ * 幾萬塊的數字放不下，手續費那格卻只有「1.5」空一大片）。
+ * 輸入框改成吃滿各自那格剩下的寬度，不再用固定字數。
+ */
+/* 只在手機上生效的換行。 */
+.mobileBreak {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .mobileBreak {
+    display: inline;
+  }
+
+  .settings {
+    grid-template-columns: 7fr 3fr;
+  }
+
+  /* 國內旅行只有預算一格，讓它佔整列，不要縮在左邊七成。 */
+  .settings > :only-child {
+    grid-column: 1 / -1;
+  }
+
+  /* 手續費那格只剩三成寬，左右留白收一點，不然輸入框會被擠到看不見數字。 */
+  .settings .feePct {
+    min-width: 0;
+    padding: var(--sp-3);
+  }
+
+  .settings .feePctInput .input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+}
+
 .listHead {
   display: flex;
   /* 兩個篩選同時開著時，窄畫面要能換行，不然標題會被擠扁。 */
