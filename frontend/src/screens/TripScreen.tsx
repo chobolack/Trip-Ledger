@@ -26,7 +26,7 @@ import { prefersReducedMotion } from '../hooks/useCountUp';
 import { NARROW, useMediaQuery } from '../hooks/useMediaQuery';
 import { useOnline } from '../hooks/useOnline';
 import { currencyLabel } from '../domain/currencies';
-import { isDomestic, tripTotals } from '../domain/money';
+import { fmtTwd, isDomestic, tripTotals } from '../domain/money';
 import { isRevising, type Category, type Expense, type PaymentMethod, type Trip } from '../domain/types';
 import s from './TripScreen.module.css';
 
@@ -53,6 +53,9 @@ export function TripScreen() {
   /* 結算演出只在「剛按下封存」那一次播。是畫面上的暫時狀態，不存進資料——
      之後再打開這個存檔就直接是結算畫面。 */
   const [showResult, setShowResult] = useState(false);
+  /* 手續費率與預算平常收起來（使用者 2026-11-14 指定：幾乎不會改，旅途中看著礙眼）。
+     每次進這個畫面都從收起來開始，不記住上次的狀態。 */
+  const [settingsOpen, setSettingsOpen] = useState(false);
   /* 刪除演出播放中。這時資料已經刪掉了，畫面上的存檔只是還留在記憶體裡的殘影。 */
   const [wiping, setWiping] = useState(false);
   /* 點圓餅切片選的分類、點長條選的付款方式。只影響下方明細，
@@ -402,9 +405,51 @@ export function TripScreen() {
         {/* 海外刷卡手續費率。封存後唯讀——改它會動到已凍結的總額，
             跟封存匯率同一條理由。要改就先進修訂模式。
             整趟台幣的存檔沒有海外刷卡，這一格直接不出現。
-            跟預算並排成一列（使用者 2026-11-13 指定）；窄畫面排不下會自動換行。 */}
+            跟預算並排成一列（使用者 2026-11-13 指定）；窄畫面排不下會自動換行。
+            平常收成一行小字，按了才展開（使用者 2026-11-14 指定）。
+            那一行直接寫出目前的值，不用展開也看得到設了多少。 */}
         {writable && (
+          <button
+            type="button"
+            className={s.settingsToggle}
+            onClick={() => setSettingsOpen((v) => !v)}
+            aria-expanded={settingsOpen}
+          >
+            <span className="hudLabel">旅程設定</span>
+            <span className={s.settingsSummary}>
+              {/* 預算在前、手續費在後（使用者 2026-11-14 指定），下面展開的輸入框同一個順序。 */}
+              {typeof trip.budgetTwd === 'number' && trip.budgetTwd > 0
+                ? `預算 ${fmtTwd(trip.budgetTwd)}`
+                : '未設預算'}
+              {!isDomestic(trip) && ` · 手續費 ${trip.cardFeePct}%`}
+            </span>
+            <span className={s.settingsCaret} aria-hidden>
+              {settingsOpen ? '收起 ▴' : '修改 ▾'}
+            </span>
+          </button>
+        )}
+        {writable && settingsOpen && (
           <div className={s.settings}>
+        {/* 預算。可寫時才能改，封存後唯讀（要改先進修訂模式）。留空＝不設預算。 */}
+          <label className={s.feePct}>
+            <span className="hudLabel">預算（台幣，可不填）</span>
+            <span className={`${s.feePctInput} ${s.budgetInput}`}>
+              <span className={s.feePctUnit}>NT$</span>
+              <input
+                className="input"
+                inputMode="numeric"
+                value={budgetText}
+                onChange={(e) => setBudgetText(e.target.value)}
+                onBlur={onBudgetCommit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                }}
+                placeholder="未設定"
+                aria-label="這趟的預算，台幣"
+              />
+            </span>
+          </label>
+
         {!isDomestic(trip) && (
           <label className={s.feePct}>
             <span className="hudLabel">海外刷卡手續費</span>
@@ -425,26 +470,6 @@ export function TripScreen() {
             </span>
           </label>
         )}
-
-        {/* 預算。可寫時才能改，封存後唯讀（要改先進修訂模式）。留空＝不設預算。 */}
-          <label className={s.feePct}>
-            <span className="hudLabel">預算（台幣，可不填）</span>
-            <span className={`${s.feePctInput} ${s.budgetInput}`}>
-              <span className={s.feePctUnit}>NT$</span>
-              <input
-                className="input"
-                inputMode="numeric"
-                value={budgetText}
-                onChange={(e) => setBudgetText(e.target.value)}
-                onBlur={onBudgetCommit}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') e.currentTarget.blur();
-                }}
-                placeholder="未設定"
-                aria-label="這趟的預算，台幣"
-              />
-            </span>
-          </label>
           </div>
         )}
 

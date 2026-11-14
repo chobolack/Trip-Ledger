@@ -144,11 +144,49 @@
 
 /* 海外刷卡手續費率。封存後整塊不顯示——改它會動到已凍結的總額。 */
 /* 手續費率與預算並排。每格至少 150px，排不下（窄手機）就各佔一列。 */
+/**
+ * 平常只看得到這一行：標籤、目前的值、「修改」。按了才展開下面的輸入框
+ * （使用者 2026-11-14 指定：這兩個值幾乎不會改，旅途中整塊攤著礙眼）。
+ * 刻意做得很淡——它是設定，不是這個畫面要人看的東西。
+ */
+.settingsToggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--sp-3);
+  width: 100%;
+  margin-top: var(--sp-3);
+  /* 上下多留一點，手指按得到。 */
+  padding: 8px 2px;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: 12px;
+  color: var(--fg-faint);
+  transition: color var(--dur) ease;
+}
+
+.settingsToggle:hover,
+.settingsToggle:focus-visible {
+  color: var(--fg-dim);
+  outline: none;
+}
+
+.settingsSummary {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.settingsCaret {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .settings {
   display: grid;
   gap: var(--sp-3);
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-1);
 }
 
 .feePct {
