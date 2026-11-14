@@ -19,11 +19,57 @@ export function getLastBackupAt(): string | null {
   }
 }
 
-/** 下載完整備份成功後呼叫。單一存檔的匯出不算——那不是全部的資料。 */
+/** 下載完整備份成功後呼叫。單一存檔的匯出另外記，見 `markTripBackedUp`。 */
 export function markBackedUp(at: string = new Date().toISOString()): void {
   try {
     localStorage.setItem(KEY, at);
   } catch {
     /* 記不下來就算了，頂多之後多提醒一次。 */
   }
+}
+
+/**
+ * 單一存檔各自上次匯出 JSON 的時間：`{ 存檔 id: ISO 時間 }`。
+ *
+ * 試用者 2026-11-14 回報：只匯出剛封存的那一趟，提醒還是不消。
+ * 那一趟確實已經備份了，所以分開記——**只算那一趟**，別的存檔照舊要完整備份
+ * 或各自匯出才算數。CSV 不算，那個匯不回來。
+ *
+ * 存檔刪掉後它的紀錄會留在這裡，沒有清——只是一個 id 配一個時間，沒人會讀到它。
+ */
+const TRIP_KEY = 'trip-ledger:tripBackupAt';
+
+export function getTripBackupMarks(): Record<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(TRIP_KEY) ?? '{}');
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    const out: Record<string, string> = {};
+    for (const [id, v] of Object.entries(parsed)) {
+      if (typeof v === 'string' && Number.isFinite(Date.parse(v))) out[id] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** 單一存檔匯出 JSON 成功後呼叫。 */
+export function markTripBackedUp(tripId: string, at: string = new Date().toISOString()): void {
+  try {
+    localStorage.setItem(TRIP_KEY, JSON.stringify({ ...getTripBackupMarks(), [tripId]: at }));
+  } catch {
+    /* 同上：記不下來就算了。 */
+  }
+}
+
+/**
+ * 某個存檔「最近一次被備份到」的時間：完整備份與它自己的單獨匯出取較晚的。
+ * 兩種都沒有是 null。
+ */
+export function getTripBackedUpAt(tripId: string): string | null {
+  const full = getLastBackupAt();
+  const own = getTripBackupMarks()[tripId] ?? null;
+  if (full === null) return own;
+  if (own === null) return full;
+  return Date.parse(own) > Date.parse(full) ? own : full;
 }

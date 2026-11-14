@@ -47,7 +47,9 @@ export function BudgetPanel({ trip, expenses }: Props) {
       ) : (
         <>
           <div className={s.row}>
-            <span className="hudLabel">預算 · 已花費</span>
+            {/* 標籤順序跟右邊的數字一致（花費在前、預算在後）。原本寫「預算 · 已花費」，
+                使用者 2026-11-14 指出會讓人以為右邊是「預算／花費」。 */}
+            <span className="hudLabel">已花費 ／ 預算</span>
             <span className={s.value}>
               <span className={over ? s.over : s.spent}>
                 {approx}

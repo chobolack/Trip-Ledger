@@ -17,10 +17,12 @@ export interface BackupTripFacts {
   status: 'active' | 'archived';
   /** 存檔建立時間（ISO 8601）。 */
   createdAt: string;
-  /** 存檔本身最後變動時間。封存、修訂、改手續費率都會動到它。 */
+  /** 存檔本身最後變動時間。封存、改手續費率、刪帳會動到它；進出修訂模式不會。 */
   updatedAt: string;
   /** 存檔與底下所有花費的 `updatedAt` 取最晚。記一筆帳動的是這個。 */
   lastSavedAt: string;
+  /** 這個存檔上次單獨匯出（JSON）的時間。只算它自己；沒單獨匯出過是 null 或不給。 */
+  exportedAt?: string | null;
 }
 
 /**
@@ -41,17 +43,30 @@ export function backupDue(
   if (trips.length === 0) return 'none';
 
   const backedUp = lastBackupAt === null ? null : Date.parse(lastBackupAt);
-  const changedAfterBackup = (iso: string) => backedUp === null || Date.parse(iso) > backedUp;
+  /* 每個存檔各看自己：完整備份與它自己的單獨匯出，取較晚的那次。 */
+  const coveredAt = (t: BackupTripFacts): number | null => {
+    const own = t.exportedAt ? Date.parse(t.exportedAt) : null;
+    if (backedUp === null) return own;
+    return own === null ? backedUp : Math.max(backedUp, own);
+  };
+  const unbacked = (t: BackupTripFacts) => {
+    const c = coveredAt(t);
+    return c === null || Date.parse(t.lastSavedAt) > c;
+  };
 
   // 上次備份之後什麼都沒動，就沒有東西需要備份。
-  if (!trips.some((t) => changedAfterBackup(t.lastSavedAt))) return 'none';
+  if (!trips.some(unbacked)) return 'none';
 
-  if (trips.some((t) => t.status === 'archived' && changedAfterBackup(t.updatedAt))) {
+  /* 看 lastSavedAt 不是 updatedAt：封存後進修訂模式改某一筆帳，動的是那筆花費，
+     存檔本身的 updatedAt 不會變。 */
+  if (trips.some((t) => t.status === 'archived' && unbacked(t))) {
     return 'sealed';
   }
 
   /* 從沒備份過的話，從最早那個存檔建立的時間起算——
      剛裝好、記下第一筆帳的人不該馬上被催。 */
   const since = backedUp ?? Math.min(...trips.map((t) => Date.parse(t.createdAt)));
+  /* 七天是從上次**完整**備份起算，單獨匯出不重置它：
+     匯出其中一趟不代表其他存檔也顧到了。 */
   return now - since >= BACKUP_STALE_DAYS * DAY_MS ? 'stale' : 'none';
 }

@@ -96,8 +96,19 @@ export function AddExpenseScreen() {
   }, [id, expenseId]);
 
   /**
-   * 換付款方式就把幣別重設成該方式的預設值。
-   * 刷卡與轉帳的帳單本來就是台幣，現金才是外幣——
+   * 某個付款方式（加上刷卡地區）預設記哪種幣別。
+   *
+   * 刷卡看地區（使用者 2026-11-14 指定）：海外刷卡手上拿到的簽單是當地幣別，
+   * 預設外幣；國內刷卡（出發前在台灣刷的機票、訂房）是台幣。
+   * 其他付款方式照 DEFAULT_AMOUNT_KIND：現金外幣、轉帳台幣。
+   */
+  function defaultKind(m: PaymentMethod, r: CardRegion): AmountKind {
+    if (m === '刷卡') return r === 'overseas' ? 'foreign' : 'twd';
+    return DEFAULT_AMOUNT_KIND[m];
+  }
+
+  /**
+   * 換付款方式就把幣別重設成該方式的預設值——
    * 這樣多數情況下使用者不必再碰幣別，但仍可手動覆蓋。
    */
   function pickMethod(m: PaymentMethod) {
@@ -105,7 +116,13 @@ export function AddExpenseScreen() {
     /* 修改既有紀錄時不跳：那筆的幣別是使用者當初確認過的，
        只是想改個付款方式，幣別卻跟著無聲變掉，金額的意義就整個錯了
        （3,000 日圓變成 3,000 台幣）。要改幣別就自己按。 */
-    if (!editing) setKind(DEFAULT_AMOUNT_KIND[m]);
+    if (!editing) setKind(defaultKind(m, region));
+  }
+
+  /** 換刷卡地區，幣別跟著跳到該地區的預設值。修改既有紀錄時不跳，理由同上。 */
+  function pickRegion(r: CardRegion) {
+    setRegion(r);
+    if (!editing) setKind(defaultKind(method, r));
   }
 
   if (trip === undefined) {
@@ -241,7 +258,7 @@ export function AddExpenseScreen() {
                     key={r}
                     type="button"
                     className={`${s.kindBtn} ${region === r ? s.kindBtnOn : ''}`}
-                    onClick={() => setRegion(r)}
+                    onClick={() => pickRegion(r)}
                   >
                     {CARD_REGION_LABEL[r]}
                   </button>
@@ -297,7 +314,7 @@ export function AddExpenseScreen() {
         <div className={s.group}>
           <div className={s.groupHead}>
             <span className="hudLabel">付款方式</span>
-            {!domestic && <span className="fieldHint">刷卡與轉帳預設台幣，現金預設外幣</span>}
+            {!domestic && <span className="fieldHint">現金與海外刷卡預設外幣，國內刷卡與轉帳預設台幣</span>}
           </div>
           <div className="chips">
             {paymentMethodsFor(trip.currency, method).map((m) => (

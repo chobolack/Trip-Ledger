@@ -144,6 +144,7 @@
 /* 「上次完整備份」放的是日期時間，不是一個大數字，字要小一號才排得下。 */
 .statValueSmall {
   font-size: 14px;
+  line-height: 1.4;
   white-space: nowrap;
 }
 

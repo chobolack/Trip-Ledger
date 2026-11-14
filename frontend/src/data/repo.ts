@@ -110,14 +110,21 @@ export async function listTrips(): Promise<Trip[]> {
   return alive(await db.getAll('trips'));
 }
 
+/**
+ * `touch: false`＝寫入但不更新 `updatedAt`。只給「不算內容變動」的寫入用——
+ * 目前是進出修訂模式（`revising` 只是畫面能不能改的開關）。
+ * `updatedAt` 是備份提醒判斷「上次備份之後有沒有動過」的依據，
+ * 開了修訂又原封不動關掉的存檔不該被當成改過（試用者 2026-11-14 回報）。
+ */
 export async function updateTrip(
   id: string,
   patch: Partial<Omit<Trip, 'id' | 'createdAt'>>,
+  { touch = true }: { touch?: boolean } = {},
 ): Promise<Trip> {
   const db = await getDb();
   const current = await db.get('trips', id);
   if (!current) throw new Error(`存檔不存在：${id}`);
-  const next: Trip = { ...current, ...patch, updatedAt: now() };
+  const next: Trip = { ...current, ...patch, updatedAt: touch ? now() : current.updatedAt };
   await db.put('trips', next);
   return next;
 }
@@ -198,7 +205,8 @@ export async function beginRevision(id: string): Promise<Trip> {
   const trip = await getTrip(id);
   if (!trip) throw new Error(`存檔不存在：${id}`);
   if (trip.status !== 'archived') throw new Error('只有已封存的存檔才需要修訂模式。');
-  return updateTrip(id, { revising: true });
+  // 只是打開開關，內容沒變，不動 updatedAt（見 updateTrip）。
+  return updateTrip(id, { revising: true }, { touch: false });
 }
 
 /**
@@ -211,7 +219,10 @@ export async function beginRevision(id: string): Promise<Trip> {
 export async function endRevision(id: string): Promise<Trip> {
   const trip = await getTrip(id);
   if (!trip) throw new Error(`存檔不存在：${id}`);
-  return updateTrip(id, { revising: false, endedOn: await lastSpentOn(trip) });
+  const endedOn = await lastSpentOn(trip);
+  /* 結束日真的變了才算存檔有變動。修訂中改過、刪過明細的話，
+     那些動作自己會留下時間（updateExpense／deleteExpense），不靠這裡。 */
+  return updateTrip(id, { revising: false, endedOn }, { touch: endedOn !== trip.endedOn });
 }
 
 /**
@@ -302,10 +313,19 @@ export async function updateExpense(id: string, patch: ExpensePatch): Promise<Ex
   return next;
 }
 
-/** 刪除一筆花費，真的從資料庫移除。沒有復原的路。 */
+/**
+ * 刪除一筆花費，真的從資料庫移除。沒有復原的路。
+ *
+ * 順手把所屬存檔的 `updatedAt` 更新：被刪的那筆不留痕跡，不這樣做的話
+ * 「上次備份之後刪過帳」這件事沒有任何地方看得出來，備份提醒會漏掉。
+ */
 export async function deleteExpense(id: string): Promise<void> {
   const db = await getDb();
+  const current = await db.get('expenses', id);
   await db.delete('expenses', id);
+  if (!current) return;
+  const trip = await db.get('trips', current.tripId);
+  if (trip) await db.put('trips', { ...trip, updatedAt: now() });
 }
 
 export async function listExpenses(tripId: string): Promise<Expense[]> {

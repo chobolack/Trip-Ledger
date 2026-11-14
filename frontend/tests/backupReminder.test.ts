@@ -65,3 +65,34 @@ describe('付款方式清單', () => {
     expect(paymentMethodsFor('USD', '西瓜卡')).toContain('西瓜卡');
   });
 });
+
+describe('backupDue：封存後的修訂', () => {
+  it('封存後只改了某一筆帳（存檔本身沒動）也馬上提醒', () => {
+    const revised = facts({ status: 'archived', updatedAt: at(1), lastSavedAt: at(5) });
+    expect(backupDue([revised], at(4), T0 + 5 * DAY)).toBe('sealed');
+  });
+
+  it('備份之後什麼都沒動就不提醒（開了修訂又原封不動關掉）', () => {
+    const untouched = facts({ status: 'archived', updatedAt: at(1), lastSavedAt: at(1) });
+    expect(backupDue([untouched], at(4), T0 + 60 * DAY)).toBe('none');
+  });
+});
+
+describe('backupDue：單一存檔匯出', () => {
+  it('封存的那一趟單獨匯出過：不再提醒', () => {
+    const sealed = facts({ status: 'archived', updatedAt: at(5), lastSavedAt: at(5), exportedAt: at(6) });
+    expect(backupDue([sealed], null, T0 + 60 * DAY)).toBe('none');
+    expect(backupDue([sealed], at(4), T0 + 60 * DAY)).toBe('none');
+  });
+
+  it('單獨匯出之後又改過：再提醒', () => {
+    const sealed = facts({ status: 'archived', updatedAt: at(5), lastSavedAt: at(7), exportedAt: at(6) });
+    expect(backupDue([sealed], null, T0 + 7 * DAY)).toBe('sealed');
+  });
+
+  it('只匯出其中一趟，另一趟封存了沒備份：照樣提醒', () => {
+    const a = facts({ status: 'archived', updatedAt: at(5), lastSavedAt: at(5), exportedAt: at(6) });
+    const b = facts({ status: 'archived', updatedAt: at(5), lastSavedAt: at(5) });
+    expect(backupDue([a, b], null, T0 + 6 * DAY)).toBe('sealed');
+  });
+});

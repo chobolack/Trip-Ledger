@@ -10,7 +10,7 @@ import {
   type ImportResult,
 } from '../data/backup';
 import { buildTripBackup } from '../data/backup';
-import { getLastBackupAt, markBackedUp } from '../data/backupMark';
+import { getLastBackupAt, markBackedUp, markTripBackedUp } from '../data/backupMark';
 import { downloadText } from '../data/download';
 import { getTrip, listExpenses, listTrips } from '../data/repo';
 import { csvFilename, toCsv } from '../domain/csv';
@@ -27,10 +27,14 @@ import s from './DataScreen.module.css';
  * 「過往存檔」是停用狀態，匯入的入口不能藏在它後面。
  */
 /** 2026/11/13 20:07 這種寫法，用裝置當地時間。 */
-function formatStamp(iso: string): string {
+/** 日期與時間分開回傳：畫面上排成兩行（見下面「上次完整備份」）。 */
+function formatStamp(iso: string): { date: string; time: string } {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  return {
+    date: `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`,
+    time: `${p(d.getHours())}:${p(d.getMinutes())}`,
+  };
 }
 
 export function DataScreen() {
@@ -66,8 +70,7 @@ export function DataScreen() {
     try {
       const backup = await buildBackup();
       downloadText(backupFilename(), JSON.stringify(backup), 'application/json');
-      /* 只有完整備份才算數——單一存檔的匯出不是全部的資料。
-         瀏覽器不會告訴網頁檔案到底有沒有存成功，所以這裡記的是「按下去而且沒出錯」。 */
+      /* 瀏覽器不會告訴網頁檔案到底有沒有存成功，所以這裡記的是「按下去而且沒出錯」。 */
       markBackedUp();
       setLastBackupAt(getLastBackupAt());
     } catch (e) {
@@ -88,6 +91,8 @@ export function DataScreen() {
         JSON.stringify(backup),
         'application/json',
       );
+      // 這一趟算備份過了（只有這一趟）。見 backupMark.ts。
+      markTripBackedUp(picked);
     } catch (e) {
       setError(e instanceof Error ? `匯出失敗：${e.message}` : '匯出失敗。');
     }
@@ -159,7 +164,17 @@ export function DataScreen() {
             <div className={s.stat}>
               <span className="hudLabel">上次完整備份</span>
               <span className={`${s.statValue} ${s.statValueSmall}`}>
-                {lastBackupAt ? formatStamp(lastBackupAt) : '還沒備份過'}
+                {/* 日期一行、時間一行（使用者 2026-11-14 指定）：排成一行的話
+                    手機上這一格不夠寬，時間會超出畫面。 */}
+                {lastBackupAt ? (
+                  <>
+                    {formatStamp(lastBackupAt).date}
+                    <br />
+                    {formatStamp(lastBackupAt).time}
+                  </>
+                ) : (
+                  '還沒備份過'
+                )}
               </span>
             </div>
           </div>

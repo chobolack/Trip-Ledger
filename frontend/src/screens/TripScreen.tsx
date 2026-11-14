@@ -7,7 +7,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { SealResult } from '../components/SealResult';
 import { StatsPanel } from '../components/StatsPanel';
 import { TotalsPanel } from '../components/TotalsPanel';
-import { getLastBackupAt } from '../data/backupMark';
+import { getTripBackedUpAt } from '../data/backupMark';
 import { fetchRateToTwd } from '../data/rates';
 import {
   beginRevision,
@@ -21,6 +21,7 @@ import {
   today,
   updateTrip,
 } from '../data/repo';
+import { useArmed } from '../hooks/useArmed';
 import { prefersReducedMotion } from '../hooks/useCountUp';
 import { NARROW, useMediaQuery } from '../hooks/useMediaQuery';
 import { useOnline } from '../hooks/useOnline';
@@ -44,10 +45,11 @@ export function TripScreen() {
 
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [deleteArmed, setDeleteArmed] = useState(false);
+  /* 兩段式確認的按鈕：上膛後點畫面任何其他地方都會取消（見 useArmed）。 */
+  const { armed: deleteArmed, setArmed: setDeleteArmed, ref: deleteRef } = useArmed();
   /* 封存也是兩段式確認。封存後沒有「變回進行中」的路（使用者 2026-11-11 拿掉了
      解除封存），所以誤觸要在這裡擋，不是事後救。 */
-  const [sealArmed, setSealArmed] = useState(false);
+  const { armed: sealArmed, setArmed: setSealArmed, ref: sealRef } = useArmed();
   /* 結算演出只在「剛按下封存」那一次播。是畫面上的暫時狀態，不存進資料——
      之後再打開這個存檔就直接是結算畫面。 */
   const [showResult, setShowResult] = useState(false);
@@ -148,8 +150,11 @@ export function TripScreen() {
   const writable = !sealed || revising;
   /* 這個存檔在上次完整備份之後有沒有動過（封存、修訂都會更新 updatedAt）。
      每次渲染直接讀，不放 state：從備份頁回來時這個畫面會重新掛載，讀到的就是新的。 */
-  const lastBackupAt = getLastBackupAt();
-  const unbacked = lastBackupAt === null || Date.parse(trip.updatedAt) > Date.parse(lastBackupAt);
+  /* 完整備份或這一趟自己的單獨匯出，哪個晚算哪個。 */
+  const lastBackupAt = getTripBackedUpAt(trip.id);
+  /* 存檔本身與每一筆花費取最晚的變動時間——修訂模式改一筆帳動的是花費，不是存檔。 */
+  const lastSavedAt = expenses.reduce((max, e) => (e.updatedAt > max ? e.updatedAt : max), trip.updatedAt);
+  const unbacked = lastBackupAt === null || Date.parse(lastSavedAt) > Date.parse(lastBackupAt);
   const dayCount = spanInDays(trip.startedOn, trip.endedOn ?? today());
   const totals = tripTotals(trip, expenses);
   const shown = expenses.filter(
@@ -283,6 +288,7 @@ export function TripScreen() {
         </button>
       ) : (
         <button
+          ref={sealRef}
           type="button"
           className={`btnGhost ${s.headBtn}`}
           onClick={onSeal}
@@ -299,6 +305,7 @@ export function TripScreen() {
         </button>
       )}
       <button
+        ref={deleteRef}
         type="button"
         className={`btnGhost ${s.headBtn} ${s.danger}`}
         onClick={onDeleteTrip}

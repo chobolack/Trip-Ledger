@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useArmed } from '../hooks/useArmed';
 import { useInView } from '../hooks/useInView';
 import { cardFeeTwd, fmt, fmtTwd, groupByDay, isDomestic } from '../domain/money';
 import { CARD_REGION_LABEL, type Expense, type Trip } from '../domain/types';
@@ -104,7 +105,7 @@ function Row({
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
 }) {
-  const [armed, setArmed] = useState(false);
+  const { armed, setArmed, ref: delRef } = useArmed();
   /* 捲到看得見才從左邊滑進來，而且只滑一次（使用者 2026-11-12 指定）。
      延遲在「第一次被看見」的那次渲染決定一次就固定，之後重新渲染不會重排隊。 */
   const [entryRef, seen] = useInView<HTMLDivElement>(0.15);
@@ -160,6 +161,7 @@ function Row({
         {!readOnly && (
           <button
             type="button"
+            ref={delRef}
             className={`${s.del} ${armed ? s.delArmed : ''}`}
             onClick={() => (armed ? onDelete(expense.id) : setArmed(true))}
             onBlur={() => setArmed(false)}
@@ -170,7 +172,12 @@ function Row({
         )}
       </div>
       {fee !== 0 && (
-        <div className={`${s.feeRow} ${readOnly ? '' : s.feeRowEditable}`}>
+        /* 可寫時點手續費這一行也進修改畫面：它跟主列一起高亮，亮了卻點不動會像壞掉。
+           只是給滑鼠／手指的方便，鍵盤與輔助技術走上面那顆修改鈕就夠了。 */
+        <div
+          className={`${s.feeRow} ${readOnly ? '' : s.feeRowEditable}`}
+          onClick={readOnly ? undefined : () => onEdit(expense.id)}
+        >
           <span>刷卡手續費 {trip.cardFeePct}%</span>
           <span className={s.feeValue}>
             {fee === null ? '待匯率' : `＋${fmtTwd(fee)}`}
