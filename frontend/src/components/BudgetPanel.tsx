@@ -28,8 +28,18 @@ export function BudgetPanel({ trip, expenses }: Props) {
 
   const { budgetTwd, spentTwd, remainingTwd, estimated } = b;
   const over = remainingTwd !== null && remainingTwd < 0;
-  // 進度條最多畫到滿格；超支靠顏色與文字講，不讓條衝出框。
-  const ratio = spentTwd === null ? 0 : Math.min(1, Math.max(0, spentTwd / budgetTwd));
+  /**
+   * 血條（使用者 2026-11-14 指定）：條的長度是**剩下的預算**，花錢就是扣血，
+   * 不是原本那種「花了多少就長多少」的進度條。顏色看剩餘比例：
+   *
+   *   剩超過 50%　綠
+   *   剩 30～50%　橘
+   *   剩 0～30%　 紅
+   *   超出預算　　整條深紅（條畫滿，不是空的——空條看起來像還沒開始）
+   */
+  const left = remainingTwd === null ? 0 : Math.min(1, Math.max(0, remainingTwd / budgetTwd));
+  const ratio = over ? 1 : left;
+  const level = over ? s.fillOver : left > 0.5 ? s.fillGood : left >= 0.3 ? s.fillLow : s.fillCritical;
   const approx = estimated ? '約 ' : '';
 
   return (
@@ -64,11 +74,11 @@ export function BudgetPanel({ trip, expenses }: Props) {
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={Math.round((spentTwd / budgetTwd) * 100)}
-            aria-label="預算使用比例"
+            aria-valuenow={Math.round(left * 100)}
+            aria-label="預算剩餘比例"
           >
             <span
-              className={`${s.fill} ${over ? s.fillOver : ''}`}
+              className={`${s.fill} ${level}`}
               style={{ transform: `scaleX(${ratio})` }}
             />
           </div>
